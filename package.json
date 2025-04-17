@@ -1,6 +1,6 @@
 {
     "name": "folder-info-app",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Select folder, view structure, choose files, get content for AI chat.",
     "main": "main.js",
     "productName": "Folder Info App",
