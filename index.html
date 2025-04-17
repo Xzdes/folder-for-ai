@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <!-- Рекомендуемая политика безопасности для Electron -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
+    <title>Сборщик Информации о Папке</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Информация о папке для ИИ</h1>
+            <button id="select-folder-btn">Выбрать корневую папку...</button>
+            <div id="status-bar">Папка не выбрана</div>
+        </header>
+
+        <main class="content-area">
+            <!-- Левая панель: Дерево файлов -->
+            <div class="panel file-tree-panel">
+                <h2>Структура папки (выберите файлы для анализа):</h2>
+                <div id="file-tree-container">
+                    <!-- Дерево будет построено здесь с помощью JavaScript -->
+                    <p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>
+                </div>
+            </div>
+
+            <!-- Правая панель: Вывод -->
+            <div class="panel output-panel">
+                <div class="output-section">
+                    <h2>Полная структура папки:</h2>
+                    <textarea id="structure-output" readonly placeholder="Структура папки появится здесь..."></textarea>
+                    <button id="copy-structure-btn" disabled>Копировать структуру</button>
+                </div>
+
+                <div class="output-section">
+                    <h2>Содержимое выбранных файлов:</h2>
+                    <textarea id="content-output" readonly placeholder="Содержимое выбранных файлов появится здесь..."></textarea>
+                    <button id="copy-content-btn" disabled>Копировать содержимое</button>
+                </div>
+                 <div id="content-status-bar"></div>
+            </div>
+        </main>
+    </div>
+
+    <script src="./renderer.js"></script>
+</body>
+</html>

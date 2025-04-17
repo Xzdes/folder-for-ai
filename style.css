@@ -1,0 +1,171 @@
+/* style.css */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f4f4f4;
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Занимаем всю высоту */
+    overflow: hidden; /* Предотвращаем прокрутку body */
+}
+
+.container {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Контейнер растягивается */
+    overflow: hidden; /* Предотвращаем прокрутку контейнера */
+}
+
+header {
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+}
+
+header h1 {
+    margin: 0 0 10px 0;
+}
+
+#status-bar {
+    margin-top: 8px;
+    font-size: 0.9em;
+    color: #555;
+    min-height: 1.2em;
+    word-break: break-all; /* Перенос длинных путей */
+}
+
+.content-area {
+    display: flex;
+    flex-grow: 1; /* Занимает оставшееся место */
+    overflow: hidden; /* Важно для прокрутки панелей */
+    gap: 15px; /* Пространство между панелями */
+}
+
+.panel {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden; /* Панель не должна выходить за рамки */
+}
+
+.file-tree-panel {
+    flex-basis: 40%; /* Начальная ширина левой панели */
+    min-width: 250px;
+}
+
+.output-panel {
+    flex-basis: 60%; /* Начальная ширина правой панели */
+    min-width: 300px;
+}
+
+.panel h2 {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 1.1em;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 5px;
+}
+
+#file-tree-container {
+    flex-grow: 1; /* Занимает все доступное место в панели */
+    overflow-y: auto; /* Включаем прокрутку только по вертикали */
+    font-size: 0.9em;
+    border: 1px solid #eee;
+    padding: 5px;
+}
+
+/* Стили для дерева файлов */
+#file-tree-container ul {
+    list-style-type: none;
+    padding-left: 20px; /* Отступ для вложенности */
+    margin: 0;
+}
+
+#file-tree-container li {
+    margin: 2px 0;
+    white-space: nowrap; /* Предотвращаем перенос строк */
+}
+
+#file-tree-container label {
+    cursor: pointer;
+    display: inline-flex; /* Для выравнивания чекбокса и текста */
+    align-items: center;
+}
+
+#file-tree-container input[type="checkbox"] {
+    margin-right: 5px;
+    vertical-align: middle; /* Выравнивание по центру */
+}
+
+/* Стилизация иконок (простая) */
+.item-label::before {
+    content: '📄'; /* Иконка файла по умолчанию */
+    display: inline-block;
+    margin-right: 4px;
+    width: 1em;
+}
+.item-label.is-directory::before {
+    content: '📁'; /* Иконка папки */
+}
+.item-label.is-ignored {
+    color: #999; /* Серый цвет для игнорируемых */
+    font-style: italic;
+}
+.item-label.has-error {
+     color: #cc0000; /* Красный для элементов с ошибкой доступа */
+     text-decoration: line-through;
+}
+.item-label.has-error::before {
+    content: '🚫'; /* Иконка ошибки */
+}
+
+.output-section {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1; /* Разделы занимают место в панели */
+    min-height: 100px; /* Минимальная высота, чтобы не схлопывались */
+    margin-bottom: 15px; /* Отступ между секциями вывода */
+}
+.output-section:last-child {
+    margin-bottom: 0;
+}
+
+.output-section textarea {
+    flex-grow: 1; /* Textarea растягивается */
+    width: calc(100% - 10px); /* Учитываем padding/border */
+    min-height: 150px; /* Минимальная высота textarea */
+    margin-bottom: 10px;
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85em;
+    border: 1px solid #ccc;
+    padding: 5px;
+    resize: vertical; /* Разрешить изменять размер по вертикали */
+}
+
+button {
+    padding: 8px 15px;
+    cursor: pointer;
+    border: 1px solid #ccc;
+    background-color: #e7e7e7;
+    border-radius: 3px;
+}
+
+button:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+}
+
+button:hover:not(:disabled) {
+    background-color: #ddd;
+}
+
+#content-status-bar {
+    font-size: 0.8em;
+    color: #cc0000; /* Красный для ошибок */
+    margin-top: 5px;
+}

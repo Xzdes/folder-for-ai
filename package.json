@@ -1,0 +1,50 @@
+{
+    "name": "folder-info-app",
+    "version": "1.0.0",
+    "description": "Select folder, view structure, choose files, get content for AI chat.",
+    "main": "main.js",
+    "productName": "Folder Info App",
+    "scripts": {
+        "start": "electron .",
+        "test": "echo \"Error: no test specified\" && exit 1",
+        "dist": "electron-builder --win"
+    },
+    "keywords": [
+        "electron",
+        "filesystem",
+        "utility"
+    ],
+    "author": "Guliaev",
+    "license": "MIT",
+    "dependencies": {
+    },
+    "devDependencies": {
+        "electron": "^35.1.5",
+        "electron-builder": "^26.0.12"
+      },
+    "build": {
+      "appId": "com.electron.folderinfoapp",
+      "productName": "Folder Info App",
+      "files": [ 
+        "main.js",
+        "preload.js",
+        "index.html",
+        "renderer.js",
+        "style.css",
+        "node_modules/**/*"
+      ],
+      "directories": {
+        "output": "dist"
+      },
+      "win": {
+        "target": [
+          {
+            "target": "portable",
+            "arch": [
+              "x64"
+            ]
+          }
+        ]
+      }
+    }
+}
