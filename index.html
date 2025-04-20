@@ -2,26 +2,33 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <!-- Рекомендуемая политика безопасности для Electron -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
     <title>Сборщик Информации о Папке</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container">
+    <div class="container" id="drop-zone"> <!-- Добавлен ID для Drag & Drop -->
         <header>
             <h1>Информация о папке для ИИ</h1>
-            <button id="select-folder-btn">Выбрать корневую папку...</button>
+            <div class="folder-selection">
+                 <button id="select-folder-btn">Выбрать корневую папку...</button>
+                 <span id="scan-indicator" class="loading-indicator" style="display: none;">Сканирование...</span> <!-- Индикатор сканирования -->
+                 <span id="last-folder-info" style="font-size: 0.8em; margin-left: 10px;"></span> <!-- Место для информации о последней папке -->
+            </div>
             <div id="status-bar">Папка не выбрана</div>
         </header>
 
         <main class="content-area">
             <!-- Левая панель: Дерево файлов -->
             <div class="panel file-tree-panel">
+                <div class="tree-controls"> <!-- Контейнер для управления деревом -->
+                    <input type="search" id="search-input" placeholder="Поиск по имени..." aria-label="Фильтр дерева файлов">
+                    <button id="expand-all-btn" title="Развернуть все папки">Развернуть</button>
+                    <button id="collapse-all-btn" title="Свернуть все папки">Свернуть</button>
+                </div>
                 <h2>Структура папки (выберите файлы для анализа):</h2>
                 <div id="file-tree-container">
-                    <!-- Дерево будет построено здесь с помощью JavaScript -->
-                    <p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>
+                    <p>Нажмите "Выбрать корневую папку..." или перетащите папку сюда.</p>
                 </div>
             </div>
 
@@ -34,13 +41,21 @@
                 </div>
 
                 <div class="output-section">
-                    <h2>Содержимое выбранных файлов:</h2>
+                    <h2>
+                        Содержимое выбранных файлов (<span id="selected-files-count">0</span>): <!-- Счетчик выбранных файлов -->
+                        <span id="content-load-indicator" class="loading-indicator" style="display: none;">Загрузка...</span> <!-- Индикатор загрузки контента -->
+                    </h2>
                     <textarea id="content-output" readonly placeholder="Содержимое выбранных файлов появится здесь..."></textarea>
                     <button id="copy-content-btn" disabled>Копировать содержимое</button>
                 </div>
-                 <div id="content-status-bar"></div>
+                 <div id="content-status-bar"></div> <!-- Статус ошибок чтения -->
             </div>
         </main>
+
+        <!-- Оверлей для Drag & Drop -->
+        <div id="drag-overlay" style="display: none;">
+            <p>Перетащите папку сюда</p>
+        </div>
     </div>
 
     <script src="./renderer.js"></script>

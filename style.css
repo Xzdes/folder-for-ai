@@ -8,6 +8,7 @@ body {
     flex-direction: column;
     height: 100vh; /* Занимаем всю высоту */
     overflow: hidden; /* Предотвращаем прокрутку body */
+    position: relative; /* Для позиционирования оверлея */
 }
 
 .container {
@@ -16,6 +17,7 @@ body {
     flex-direction: column;
     flex-grow: 1; /* Контейнер растягивается */
     overflow: hidden; /* Предотвращаем прокрутку контейнера */
+    position: relative; /* Для drag-overlay */
 }
 
 header {
@@ -28,6 +30,12 @@ header h1 {
     margin: 0 0 10px 0;
 }
 
+.folder-selection {
+    display: flex;
+    align-items: center; /* Выравниваем элементы по вертикали */
+    gap: 10px; /* Пространство между кнопкой и индикатором/инфо */
+}
+
 #status-bar {
     margin-top: 8px;
     font-size: 0.9em;
@@ -35,6 +43,17 @@ header h1 {
     min-height: 1.2em;
     word-break: break-all; /* Перенос длинных путей */
 }
+
+#last-folder-info {
+    font-size: 0.8em;
+    color: #666;
+}
+#last-folder-info button {
+    font-size: 0.9em; /* Кнопка "Загрузить" чуть меньше */
+    padding: 2px 5px;
+    margin-left: 5px;
+}
+
 
 .content-area {
     display: flex;
@@ -56,6 +75,7 @@ header h1 {
 .file-tree-panel {
     flex-basis: 40%; /* Начальная ширина левой панели */
     min-width: 250px;
+    position: relative; /* Для позиционирования .tree-controls */
 }
 
 .output-panel {
@@ -69,7 +89,38 @@ header h1 {
     font-size: 1.1em;
     border-bottom: 1px solid #eee;
     padding-bottom: 5px;
+    display: flex; /* Для выравнивания заголовка и индикатора */
+    justify-content: space-between; /* Разместить индикатор справа */
+    align-items: center;
 }
+
+/* Стили для элементов управления деревом */
+.tree-controls {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 10px;
+    padding: 5px;
+    background-color: #f0f0f0; /* Легкий фон для отделения */
+    border-radius: 3px;
+}
+
+#search-input {
+    flex-grow: 1; /* Занимает доступное пространство */
+    padding: 4px 8px;
+    border: 1px solid #ccc;
+    border-radius: 3px;
+    font-size: 0.9em;
+}
+
+.tree-controls button {
+    padding: 4px 8px;
+    font-size: 0.85em;
+    background-color: #e0e0e0;
+}
+.tree-controls button:hover:not(:disabled) {
+    background-color: #d0d0d0;
+}
+
 
 #file-tree-container {
     flex-grow: 1; /* Занимает все доступное место в панели */
@@ -85,44 +136,105 @@ header h1 {
     padding-left: 20px; /* Отступ для вложенности */
     margin: 0;
 }
+/* Класс для скрытия вложенных UL при сворачивании */
+#file-tree-container ul.collapsed {
+    display: none;
+}
 
 #file-tree-container li {
-    margin: 2px 0;
+    margin: 1px 0;
+    padding: 1px 3px; /* Небольшой паддинг для фона */
     white-space: nowrap; /* Предотвращаем перенос строк */
+    border-radius: 2px;
+    transition: background-color 0.2s ease; /* Плавный переход фона для поиска */
+}
+
+/* Класс для скрытия узлов при фильтрации */
+#file-tree-container li.hidden-node {
+    display: none;
+}
+
+/* Класс для подсветки найденных элементов */
+#file-tree-container li.search-match > label {
+    background-color: #ffffa0; /* Желтоватый фон для найденных */
 }
 
 #file-tree-container label {
     cursor: pointer;
     display: inline-flex; /* Для выравнивания чекбокса и текста */
     align-items: center;
+    position: relative; /* Для псевдоэлементов */
+    width: 100%; /* Чтобы фон занимал всю ширину LI */
+    padding: 1px 0; /* Небольшой вертикальный отступ */
 }
 
 #file-tree-container input[type="checkbox"] {
     margin-right: 5px;
-    vertical-align: middle; /* Выравнивание по центру */
+    flex-shrink: 0; /* Чекбокс не должен сжиматься */
 }
 
-/* Стилизация иконок (простая) */
-.item-label::before {
-    content: '📄'; /* Иконка файла по умолчанию */
+/* Стилизация иконок и текста */
+.item-label span.node-name { /* Обертка для текста имени файла/папки */
+    overflow: hidden;
+    text-overflow: ellipsis; /* Добавляем троеточие, если имя не влезает */
+    white-space: nowrap;
     display: inline-block;
-    margin-right: 4px;
+    vertical-align: middle;
+}
+
+.item-label::before {
+    content: '';
+    display: inline-block;
     width: 1em;
+    height: 1em;
+    margin-right: 4px;
+    background-repeat: no-repeat;
+    background-position: center center;
+    background-size: contain;
+    vertical-align: middle;
+    flex-shrink: 0;
 }
+
 .item-label.is-directory::before {
-    content: '📁'; /* Иконка папки */
+    /* Используем SVG для лучшего качества */
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M.577 3.25a.75.75 0 0 1 .5-.75h4.44l1.25-1.5a.75.75 0 0 1 .6-.3h5.133a.75.75 0 0 1 .75.75v1.196l.001.001a1.75 1.75 0 0 1 1.699 1.71l-.006 7.039a1.75 1.75 0 0 1-1.75 1.75H2.25a1.75 1.75 0 0 1-1.75-1.75V3.25Zm7.5 1a.75.75 0 0 0-.75.75v.25h7.147A.25.25 0 0 0 15 5V3.25a.25.25 0 0 0-.25-.25H8.077Z"/></svg>');
 }
+.item-label:not(.is-directory)::before {
+    /* SVG для файла */
+     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.75 1.5a.25.25 0 0 0-.25.25v11.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V6.19l-4.44-4.44H3.75Zm8.5 5.44V13.5h-8.5V1.75h4.19v4.19c0 .138.112.25.25.25h4.06Z"/></svg>');
+}
+
 .item-label.is-ignored {
-    color: #999; /* Серый цвет для игнорируемых */
+    color: #888; /* Еще серее */
     font-style: italic;
 }
+.item-label.is-ignored::before {
+    opacity: 0.6;
+}
+/* Добавим фон для игнорируемых, чтобы было заметнее */
+#file-tree-container li:has(> label.is-ignored) {
+     background-color: #f8f8f8;
+}
+
+
 .item-label.has-error {
-     color: #cc0000; /* Красный для элементов с ошибкой доступа */
-     text-decoration: line-through;
+     color: #d32f2f; /* Менее кричащий красный */
+     /* text-decoration: line-through; убрали, т.к. фон лучше */
 }
 .item-label.has-error::before {
-    content: '🚫'; /* Иконка ошибки */
+     /* SVG для ошибки/запрета */
+    background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm11.354 2.646a.5.5 0 0 1 0 .708l-.708.707a.5.5 0 0 1-.707 0L8 9.707l-1.94 1.94a.5.5 0 0 1-.707 0l-.708-.707a.5.5 0 0 1 0-.708L6.293 9 4.354 7.06a.5.5 0 0 1 0-.707l.707-.707a.5.5 0 0 1 .707 0L8 7.586l1.94-1.94a.5.5 0 0 1 .707 0l.708.707a.5.5 0 0 1 0 .707L9.707 9l1.647 1.646Z" clip-rule="evenodd"/></svg>');
 }
+/* Добавим фон для ошибок */
+#file-tree-container li:has(> label.has-error) {
+     background-color: #ffebee; /* Светло-красный фон */
+}
+
+/* Стили для tooltip (title атрибут) */
+#file-tree-container label[title] {
+    /* Можно добавить стили, если стандартный tooltip не нравится, но обычно он ок */
+}
+
 
 .output-section {
     display: flex;
@@ -153,6 +265,7 @@ button {
     border: 1px solid #ccc;
     background-color: #e7e7e7;
     border-radius: 3px;
+    transition: background-color 0.2s ease; /* Плавный переход для hover */
 }
 
 button:disabled {
@@ -168,4 +281,56 @@ button:hover:not(:disabled) {
     font-size: 0.8em;
     color: #cc0000; /* Красный для ошибок */
     margin-top: 5px;
+    min-height: 1em; /* Чтобы не прыгал интерфейс при появлении */
+}
+
+/* Стили для индикаторов загрузки */
+.loading-indicator {
+    font-size: 0.85em;
+    color: #333;
+    display: inline-flex; /* Для выравнивания со спиннером */
+    align-items: center;
+}
+
+.loading-indicator::before { /* Простой CSS спиннер */
+    content: "";
+    display: inline-block;
+    width: 1em;
+    height: 1em;
+    margin-right: 5px;
+    border: 2px solid #f3f3f3;
+    border-top: 2px solid #555;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Стили для оверлея Drag & Drop */
+#drag-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.6); /* Полупрозрачный темный фон */
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    text-align: center;
+    z-index: 10; /* Поверх других элементов */
+    pointer-events: none; /* Чтобы не мешал другим событиям, когда не виден */
+    border: 3px dashed #fff; /* Пунктирная рамка */
+    border-radius: 5px;
+}
+
+#drag-overlay p {
+    padding: 20px;
+    background-color: rgba(0, 0, 0, 0.7);
+    border-radius: 5px;
 }

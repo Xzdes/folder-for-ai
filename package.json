@@ -1,50 +1,55 @@
 {
-    "name": "folder-info-app",
-    "version": "1.1.0",
-    "description": "Select folder, view structure, choose files, get content for AI chat.",
-    "main": "main.js",
+  "name": "folder-info-app",
+  "version": "1.2.0",
+  "description": "Select or drag-and-drop a folder, view/filter structure, choose files, get content for AI chat.",
+  "main": "main.js",
+  "productName": "Folder Info App",
+  "scripts": {
+      "start": "electron .",
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "dist": "electron-builder --win"
+  },
+  "keywords": [
+      "electron",
+      "filesystem",
+      "utility",
+      "ai",
+      "context",
+      "code",
+      "structure",
+      "drag-drop"
+  ],
+  "author": "Guliaev",
+  "license": "MIT",
+  "dependencies": {
+  },
+  "devDependencies": {
+      "electron": "^31.0.1",
+      "electron-builder": "^24.13.3"
+    },
+  "build": {
+    "appId": "com.electron.folderinfoapp",
     "productName": "Folder Info App",
-    "scripts": {
-        "start": "electron .",
-        "test": "echo \"Error: no test specified\" && exit 1",
-        "dist": "electron-builder --win"
-    },
-    "keywords": [
-        "electron",
-        "filesystem",
-        "utility"
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "style.css",
+      "node_modules/**/*"
     ],
-    "author": "Guliaev",
-    "license": "MIT",
-    "dependencies": {
+    "directories": {
+      "output": "dist"
     },
-    "devDependencies": {
-        "electron": "^35.1.5",
-        "electron-builder": "^26.0.12"
-      },
-    "build": {
-      "appId": "com.electron.folderinfoapp",
-      "productName": "Folder Info App",
-      "files": [ 
-        "main.js",
-        "preload.js",
-        "index.html",
-        "renderer.js",
-        "style.css",
-        "node_modules/**/*"
-      ],
-      "directories": {
-        "output": "dist"
-      },
-      "win": {
-        "target": [
-          {
-            "target": "portable",
-            "arch": [
-              "x64"
-            ]
-          }
-        ]
-      }
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
     }
+  }
 }
