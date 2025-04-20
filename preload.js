@@ -1,8 +1,10 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Проверяем, что код выполняется в основном процессе или доверенном контексте
-// (Хотя contextBridge сам по себе обеспечивает изоляцию)
+// Канал для отправки сигнала отмены загрузки контента
+const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
+
+// Проверяем, что код выполняется в изолированном контексте
 if (process.contextIsolated) {
     try {
         contextBridge.exposeInMainWorld('electronAPI', {
@@ -17,21 +19,21 @@ if (process.contextIsolated) {
             // 2. Запросить сканирование папки по заданному пути
             scanFolderPath: (folderPath) => {
                  console.log(`Preload: Calling ipcRenderer.invoke("scan-folder-path", "${folderPath}")`);
-                 // Проверяем, что передается строка, перед отправкой в main
                  if (typeof folderPath === 'string' && folderPath.length > 0) {
                      return ipcRenderer.invoke('scan-folder-path', folderPath);
                  } else {
                      console.error('Preload: Invalid folderPath passed to scanFolderPath.');
-                     // Возвращаем промис с ошибкой, чтобы .catch() в renderer сработал
                      return Promise.reject(new Error('Invalid folder path provided'));
                  }
             },
 
             // 3. Запросить содержимое выбранных файлов
+            // Сигнал отмены (AbortSignal) не передается через invoke напрямую.
+            // Вместо этого используем отдельный канал 'cancel-file-content'.
             getFileContent: (filePaths) => {
                 console.log(`Preload: Calling ipcRenderer.invoke("get-file-content") for ${filePaths?.length ?? 0} paths.`);
-                // Проверяем, что передается массив строк
                 if (Array.isArray(filePaths)) {
+                     // Просто передаем пути файлов
                      return ipcRenderer.invoke('get-file-content', filePaths);
                 } else {
                     console.error('Preload: Invalid filePaths passed to getFileContent.');
@@ -39,12 +41,14 @@ if (process.contextIsolated) {
                 }
             },
 
-            // 4. Использовать встроенный API для буфера обмена (navigator.clipboard)
-            // Он доступен в renderer благодаря contextIsolation, но безопаснее вызывать его из preload
-            // Однако, для простоты и учитывая, что это не критически опасная операция,
-            // можно оставить вызов navigator.clipboard.writeText прямо в renderer.js,
-            // так как Content-Security-Policy это разрешает для 'self'.
-            // Оставим этот метод здесь как пример, но в renderer.js используется прямой вызов navigator.
+            // 4. НОВАЯ функция для отправки сигнала отмены в main.js
+            cancelFileContentLoad: () => {
+                console.log(`Preload: Sending cancellation signal on channel "${CANCEL_CONTENT_LOAD_CHANNEL}"`);
+                // Используем ipcRenderer.send, так как нам не нужен ответ
+                ipcRenderer.send(CANCEL_CONTENT_LOAD_CHANNEL);
+            },
+
+            // 5. Копирование в буфер обмена (оставлено для примера, но используется navigator в renderer)
              copyToClipboard: (text) => {
                  console.log('Preload: Calling navigator.clipboard.writeText');
                  if (typeof text === 'string') {
@@ -54,11 +58,6 @@ if (process.contextIsolated) {
                     return Promise.reject(new Error('Invalid text provided for clipboard'));
                  }
              },
-
-             // Можно добавить другие полезные функции, например:
-             // - Получение информации о платформе (process.platform)
-             // - Открытие URL в браузере (shell.openExternal)
-             // Для этого нужно будет импортировать { shell } из 'electron'
         });
         console.log('Preload: electronAPI exposed successfully.');
     } catch (error) {

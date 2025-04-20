@@ -1,104 +1,76 @@
 // main.js
 const { app, BrowserWindow, ipcMain, dialog } = require('electron');
 const path = require('node:path');
-const fs = require('node:fs/promises'); // Используем асинхронный fs API
-// const fsSync = require('node:fs'); // fsSync больше не используется явно, можно убрать или оставить
+const fs = require('node:fs/promises');
 
 // --- Константы ---
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB Ограничение на размер файла для чтения
-const IGNORED_ITEMS = new Set([ // Имена папок/файлов для игнорирования по умолчанию
-  '.git',
-  'node_modules',
-  '.vscode',
-  '.idea',
-  '.DS_Store',
-  'Thumbs.db',
-  'bower_components', // Добавим еще одно распространенное
-  '__pycache__',      // Для Python
-  // Добавьте сюда другие, если нужно
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const IGNORED_ITEMS = new Set([
+  '.git', 'node_modules', '.vscode', '.idea', '.DS_Store',
+  'Thumbs.db', 'bower_components', '__pycache__',
 ]);
+// Канал для получения сигнала отмены от preload.js
+const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
 
-let mainWindow; // Ссылка на главное окно
+let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000, // Сделаем окно пошире
+    width: 1000,
     height: 850,
-    autoHideMenuBar: true, //скрыть меню верхнее
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
-      nodeIntegration: false, // Безопасность: оставляем false
-      // nodeIntegrationInWorker: false, // Если бы использовали Worker Threads
-      // sandbox: true, // Можно включить для доп. безопасности, но может потребовать доработки preload
+      nodeIntegration: false,
+      // sandbox: true, // Можно включить для доп. безопасности
     },
   });
 
   mainWindow.loadFile('index.html');
-
-  // Открыть DevTools для отладки (раскомментируйте, если нужно)
   // mainWindow.webContents.openDevTools();
-
-  mainWindow.on('closed', () => {
-    mainWindow = null; // Освободить память
-  });
+  mainWindow.on('closed', () => { mainWindow = null; });
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    // На macOS принято создавать окно при клике на иконку в доке, если нет открытых окон
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
-  });
+app.whenReady().then(createWindow);
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
-
 app.on('window-all-closed', () => {
-  // Выход из приложения, если это не macOS
-  if (process.platform !== 'darwin') {
-    app.quit();
-  }
+  if (process.platform !== 'darwin') app.quit();
 });
 
 // --- Обработчики IPC ---
 
-// 1. Обработчик запроса на ВЫБОР папки через диалог и сканирование
+// 1. Выбор папки через диалог
 ipcMain.handle('select-folder', async () => {
-  if (!mainWindow) {
-      return { success: false, error: 'Главное окно не найдено.' };
-  }
+  if (!mainWindow) return { success: false, error: 'Главное окно не найдено.' };
   console.log('IPC: Received select-folder request.');
   const result = await dialog.showOpenDialog(mainWindow, {
     properties: ['openDirectory'],
-    title: 'Выберите корневую папку проекта' // Уточним заголовок
+    title: 'Выберите корневую папку проекта'
   });
-
   if (!result.canceled && result.filePaths.length > 0) {
     const folderPath = result.filePaths[0];
     console.log(`IPC: Folder selected via dialog: ${folderPath}`);
-    // Используем новую общую функцию для сканирования
     return await performScan(folderPath);
   } else {
-     console.log('IPC: Folder selection cancelled or no path received.');
-     return { success: false, error: 'Папка не выбрана' };
+    console.log('IPC: Folder selection cancelled.');
+    return { success: false, error: 'Папка не выбрана' };
   }
 });
 
-// 2. НОВЫЙ Обработчик для сканирования ПЕРЕДАННОГО пути (для D&D и "Загрузить последнюю")
+// 2. Сканирование переданного пути
 ipcMain.handle('scan-folder-path', async (event, folderPath) => {
     console.log(`IPC: Received scan-folder-path request for: ${folderPath}`);
     if (!folderPath || typeof folderPath !== 'string') {
         console.error('IPC: Invalid folderPath received.');
         return { success: false, error: 'Некорректный путь к папке.' };
     }
-    // Используем новую общую функцию для сканирования
     return await performScan(folderPath);
 });
 
-
-// 3. Обработчик запроса на получение содержимого выбранных файлов (без изменений логики)
+// 3. Получение содержимого файлов с поддержкой ОТМЕНЫ
 ipcMain.handle('get-file-content', async (event, filePaths) => {
   console.log(`IPC: Received get-file-content request for ${filePaths?.length ?? 0} files.`);
   if (!Array.isArray(filePaths)) {
@@ -108,81 +80,117 @@ ipcMain.handle('get-file-content', async (event, filePaths) => {
 
   let combinedContent = '';
   const errors = [];
-  // Определение базового пути для относительных путей (как и раньше)
   const basePathForRelative = filePaths.length > 0 ? path.dirname(filePaths[0]) : __dirname;
 
-  for (const filePath of filePaths) {
-    // Проверка, что путь к файлу валиден перед попыткой чтения
-    if (!filePath || typeof filePath !== 'string') {
-        console.warn(`IPC: Skipping invalid file path entry: ${filePath}`);
-        errors.push({ path: String(filePath), message: 'Invalid path entry' });
-        continue;
-    }
+  // --- Логика отмены ---
+  let isCancelled = false; // Флаг отмены для текущего запроса
+  const cancellationListener = () => {
+      console.log(`IPC: Received cancellation signal on channel "${CANCEL_CONTENT_LOAD_CHANNEL}" during file read.`);
+      isCancelled = true;
+      // Удаляем слушатель СРАЗУ после срабатывания, чтобы он не повлиял на следующие запросы
+      ipcMain.removeListener(CANCEL_CONTENT_LOAD_CHANNEL, cancellationListener);
+  };
+  // Добавляем слушатель ТОЛЬКО на время выполнения этого запроса
+  ipcMain.once(CANCEL_CONTENT_LOAD_CHANNEL, cancellationListener);
+  // --------------------
 
-    const relativePath = path.relative(basePathForRelative, filePath);
-    try {
-      const stats = await fs.stat(filePath);
+  try {
+      for (const filePath of filePaths) {
+          // --- Проверка флага отмены перед обработкой каждого файла ---
+          if (isCancelled) {
+              console.log('IPC: File reading loop cancelled.');
+              // Добавляем информацию об отмене в ошибки, если нужно информировать пользователя
+              errors.push({ path: 'N/A', message: 'Operation cancelled by user' });
+              break; // Выход из цикла for...of
+          }
+          // -----------------------------------------------------------
 
-      if (!stats.isFile()) {
-          combinedContent += `--- File: ${relativePath} ---\n`;
-          combinedContent += `[Not a File]\n`;
-          combinedContent += `--- End: ${relativePath} ---\n\n`;
-          console.warn(`IPC: Skipping non-file item: ${filePath}`);
-          errors.push({ path: relativePath, message: 'Not a file' });
-          continue;
-      }
+          if (!filePath || typeof filePath !== 'string') {
+              console.warn(`IPC: Skipping invalid file path entry: ${filePath}`);
+              errors.push({ path: String(filePath), message: 'Invalid path entry' });
+              continue;
+          }
 
-      if (stats.size > MAX_FILE_SIZE_BYTES) {
-        console.warn(`IPC: File too large: ${filePath} (${stats.size} bytes)`);
-        combinedContent += `--- File: ${relativePath} ---\n`;
-        combinedContent += `[File Too Large To Include Content (> ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)]\n`;
-        combinedContent += `--- End: ${relativePath} ---\n\n`;
-        errors.push({ path: relativePath, message: 'File too large' });
-        continue;
-      }
+          const relativePath = path.relative(basePathForRelative, filePath);
+          try {
+              // --- Проверка флага отмены перед fs.stat ---
+              if (isCancelled) {
+                 console.log('IPC: File reading loop cancelled before stat.');
+                 errors.push({ path: 'N/A', message: 'Operation cancelled by user' });
+                 break;
+              }
+              const stats = await fs.stat(filePath);
 
-      const content = await fs.readFile(filePath, 'utf-8');
-      combinedContent += `--- File: ${relativePath} ---\n`;
-      combinedContent += "```text\n";
-      combinedContent += content;
-      combinedContent += "\n```\n";
-      combinedContent += `--- End: ${relativePath} ---\n\n`;
+              if (!stats.isFile()) {
+                  combinedContent += `--- File: ${relativePath} ---\n[Not a File]\n--- End: ${relativePath} ---\n\n`;
+                  errors.push({ path: relativePath, message: 'Not a file' });
+                  continue;
+              }
 
-    } catch (error) {
-      console.error(`IPC: Error reading file ${filePath}:`, error);
-      combinedContent += `--- File: ${relativePath} ---\n`;
-      combinedContent += `[Error Reading File: ${error.code || error.message}]\n`;
-      combinedContent += `--- End: ${relativePath} ---\n\n`;
-      errors.push({ path: relativePath, message: `Read Error: ${error.code || error.message}` });
-    }
+              if (stats.size > MAX_FILE_SIZE_BYTES) {
+                  combinedContent += `--- File: ${relativePath} ---\n[File Too Large To Include Content (> ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)]\n--- End: ${relativePath} ---\n\n`;
+                  errors.push({ path: relativePath, message: 'File too large' });
+                  continue;
+              }
+
+              // --- Проверка флага отмены перед fs.readFile ---
+              // Особенно важно перед долгими операциями
+              if (isCancelled) {
+                 console.log('IPC: File reading loop cancelled before readFile.');
+                 errors.push({ path: 'N/A', message: 'Operation cancelled by user' });
+                 break;
+              }
+              const content = await fs.readFile(filePath, 'utf-8');
+
+              // Собираем контент только если не отменено
+              combinedContent += `--- File: ${relativePath} ---\n\`\`\`text\n${content}\n\`\`\`\n--- End: ${relativePath} ---\n\n`;
+
+          } catch (error) {
+              // Проверяем, не отменена ли операция, прежде чем записывать ошибку чтения
+               if (isCancelled) {
+                   console.log('IPC: File reading loop cancelled during error handling.');
+                   // Если отмена произошла во время ошибки, можно не добавлять ошибку чтения
+                   if (!errors.some(e => e.message === 'Operation cancelled by user')) {
+                       errors.push({ path: 'N/A', message: 'Operation cancelled by user' });
+                   }
+                   break; // Выходим из цикла
+               }
+              // Если не отменено, записываем ошибку чтения
+              console.error(`IPC: Error reading file ${filePath}:`, error);
+              combinedContent += `--- File: ${relativePath} ---\n[Error Reading File: ${error.code || error.message}]\n--- End: ${relativePath} ---\n\n`;
+              errors.push({ path: relativePath, message: `Read Error: ${error.code || error.message}` });
+          }
+      } // Конец цикла for...of
+  } finally {
+      // --- Важно: Удаляем слушатель отмены в любом случае ---
+      // Это предотвратит утечки памяти и ложные срабатывания для будущих запросов,
+      // если сигнал отмены не пришел или был обработан ранее.
+      ipcMain.removeListener(CANCEL_CONTENT_LOAD_CHANNEL, cancellationListener);
+      console.log('IPC: Cancellation listener removed.');
+      // ------------------------------------------------------
   }
 
-  console.log(`IPC: Content prepared. Length: ${combinedContent.length}. Errors: ${errors.length}`);
-  // Возвращаем success: true даже при наличии ошибок чтения, но передаем ошибки
+  console.log(`IPC: Content preparation finished. Cancelled: ${isCancelled}. Length: ${combinedContent.length}. Errors: ${errors.length}`);
+  // Возвращаем результат. Если была отмена, combinedContent будет неполным.
+  // Флаг isCancelled сам по себе не возвращается, но renderer его уже знает.
   return { success: true, content: combinedContent, errors: errors };
 });
 
-
 // --- Вспомогательные функции ---
 
-// НОВАЯ общая функция для выполнения сканирования папки по заданному пути
+// Общая функция сканирования (без изменений)
 async function performScan(folderPath) {
     console.log(`Scanning folder: ${folderPath}`);
     try {
-        // 1. Проверка существования пути и является ли он директорией
         const stats = await fs.stat(folderPath);
         if (!stats.isDirectory()) {
             console.error(`Scan Error: Path is not a directory: ${folderPath}`);
             return { success: false, error: `Указанный путь не является папкой: ${folderPath}` };
         }
-
-        // 2. Выполняем рекурсивное сканирование
-        const treeData = await scanDirectory(folderPath, folderPath); // Используем путь как базу для относительных путей
+        const treeData = await scanDirectory(folderPath, folderPath);
         console.log('Scan complete.');
         return { success: true, path: folderPath, tree: treeData };
-
     } catch (error) {
-        // Обработка ошибок доступа или если путь не найден
         if (error.code === 'ENOENT') {
              console.error(`Scan Error: Path not found: ${folderPath}`);
              return { success: false, error: `Папка не найдена: ${folderPath}` };
@@ -190,42 +198,31 @@ async function performScan(folderPath) {
              console.error(`Scan Error: Permission denied: ${folderPath}`);
              return { success: false, error: `Нет прав доступа к папке: ${folderPath}` };
         } else {
-             console.error('Scan Error: Unexpected error during scan:', error);
+             console.error('Scan Error: Unexpected error:', error);
              return { success: false, error: `Ошибка сканирования: ${error.message}` };
         }
     }
 }
 
-
-// Рекурсивная асинхронная функция сканирования директории (логика без изменений)
-// Предположение: Глубина рекурсии файловой системы не достигнет лимитов Node.js в типичных случаях.
+// Рекурсивное сканирование директории (без изменений)
 async function scanDirectory(dirPath, basePath) {
   const name = path.basename(dirPath);
   const isIgnored = IGNORED_ITEMS.has(name);
   const node = {
-    name: name,
-    path: dirPath,
-    relativePath: path.relative(basePath, dirPath) || '.', // Относительный путь от корня
-    isDirectory: true,
-    ignored: isIgnored,
-    children: [],
-    error: null,
+    name: name, path: dirPath, relativePath: path.relative(basePath, dirPath) || '.',
+    isDirectory: true, ignored: isIgnored, children: [], error: null,
   };
 
-  if (isIgnored) {
-    node.children = null; // Явно указываем, что детей нет (не сканировали)
-    return node;
-  }
+  if (isIgnored) { node.children = null; return node; }
 
   let items;
   try {
-    // Проверяем права доступа перед чтением директории
     await fs.access(dirPath, fs.constants.R_OK);
     items = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
     console.warn(`Cannot read directory ${dirPath}: ${error.message}`);
-    node.error = error.code || error.message; // Записываем код или сообщение ошибки
-    node.children = null; // Указываем, что детей нет из-за ошибки
+    node.error = error.code || error.message;
+    node.children = null;
     return node;
   }
 
@@ -234,47 +231,29 @@ async function scanDirectory(dirPath, basePath) {
     const itemPath = path.join(dirPath, item.name);
     const itemName = item.name;
     const itemIsIgnored = IGNORED_ITEMS.has(itemName);
-
-    // Пропускаем скрытые файлы/папки, если не разрешено иное (пока всегда пропускаем)
-    // Можно добавить опцию для включения скрытых
-    // if (itemName.startsWith('.') && !allowHidden) continue;
-
     if (item.isDirectory()) {
-      childPromises.push(scanDirectory(itemPath, basePath)); // Рекурсивный вызов (промис)
+      childPromises.push(scanDirectory(itemPath, basePath));
     } else if (item.isFile()) {
-      childPromises.push(Promise.resolve({ // Создаем готовый промис для файла
-        name: itemName,
-        path: itemPath,
-        relativePath: path.relative(basePath, itemPath),
-        isDirectory: false,
-        ignored: itemIsIgnored,
-        error: null,
-        children: undefined // У файлов нет детей
+      childPromises.push(Promise.resolve({
+        name: itemName, path: itemPath, relativePath: path.relative(basePath, itemPath),
+        isDirectory: false, ignored: itemIsIgnored, error: null, children: undefined
       }));
     }
-    // Игнорируем симлинки и другие типы для простоты
   }
 
-  // Дожидаемся завершения всех операций с дочерними элементами
   try {
       const childrenResults = await Promise.all(childPromises);
       node.children = childrenResults;
-
-       // Сортировка: сначала папки, потом файлы, всё по алфавиту + ошибки в конец
-       node.children.sort((a, b) => {
-        if (a.error && !b.error) return 1;
-        if (!a.error && b.error) return -1;
-        if (a.error && b.error) return a.name.localeCompare(b.name); // Ошибки по имени
-        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1; // Папки первее
-        return a.name.localeCompare(b.name); // По имени
+      node.children.sort((a, b) => {
+        if (a.error && !b.error) return 1; if (!a.error && b.error) return -1;
+        if (a.error && b.error) return a.name.localeCompare(b.name);
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
+        return a.name.localeCompare(b.name);
       });
-
   } catch (childError) {
-      // Эта ошибка маловероятна с Promise.all, но на всякий случай
       console.error(`Error processing children of ${dirPath}:`, childError);
       node.error = `Error processing children: ${childError.message}`;
-      node.children = []; // Оставляем пустым списком детей в случае ошибки Promise.all
+      node.children = [];
   }
-
   return node;
 }

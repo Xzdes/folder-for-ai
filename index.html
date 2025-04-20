@@ -7,7 +7,7 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container" id="drop-zone"> <!-- Добавлен ID для Drag & Drop -->
+    <div class="container" id="drop-zone"> <!-- ID для Drag & Drop -->
         <header>
             <h1>Информация о папке для ИИ</h1>
             <div class="folder-selection">
@@ -42,8 +42,12 @@
 
                 <div class="output-section">
                     <h2>
-                        Содержимое выбранных файлов (<span id="selected-files-count">0</span>): <!-- Счетчик выбранных файлов -->
-                        <span id="content-load-indicator" class="loading-indicator" style="display: none;">Загрузка...</span> <!-- Индикатор загрузки контента -->
+                        Содержимое выбранных файлов (<span id="selected-files-count">0</span>):
+                        <!-- Контейнер для индикатора и кнопки отмены -->
+                        <span id="content-loading-controls" style="display: none;">
+                            <span id="content-load-indicator" class="loading-indicator">Загрузка...</span>
+                            <button id="cancel-content-load-btn" class="cancel-btn">Отмена</button> <!-- Кнопка Отмена -->
+                        </span>
                     </h2>
                     <textarea id="content-output" readonly placeholder="Содержимое выбранных файлов появится здесь..."></textarea>
                     <button id="copy-content-btn" disabled>Копировать содержимое</button>
