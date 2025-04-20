@@ -2,18 +2,19 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'">
-    <title>Сборщик Информации о Папке</title>
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:;">
+    <title>Folder for AI</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="container" id="drop-zone"> <!-- ID для Drag & Drop -->
+    <!-- Убран id="drop-zone" -->
+    <div class="container">
         <header>
-            <h1>Информация о папке для ИИ</h1>
+            <h1>Folder for AI</h1>
             <div class="folder-selection">
                  <button id="select-folder-btn">Выбрать корневую папку...</button>
-                 <span id="scan-indicator" class="loading-indicator" style="display: none;">Сканирование...</span> <!-- Индикатор сканирования -->
-                 <span id="last-folder-info" style="font-size: 0.8em; margin-left: 10px;"></span> <!-- Место для информации о последней папке -->
+                 <span id="scan-indicator" class="loading-indicator" style="display: none;">Сканирование...</span>
+                 <span id="last-folder-info" style="font-size: 0.8em; margin-left: 10px;"></span>
             </div>
             <div id="status-bar">Папка не выбрана</div>
         </header>
@@ -21,14 +22,15 @@
         <main class="content-area">
             <!-- Левая панель: Дерево файлов -->
             <div class="panel file-tree-panel">
-                <div class="tree-controls"> <!-- Контейнер для управления деревом -->
+                <div class="tree-controls">
                     <input type="search" id="search-input" placeholder="Поиск по имени..." aria-label="Фильтр дерева файлов">
                     <button id="expand-all-btn" title="Развернуть все папки">Развернуть</button>
                     <button id="collapse-all-btn" title="Свернуть все папки">Свернуть</button>
                 </div>
                 <h2>Структура папки (выберите файлы для анализа):</h2>
                 <div id="file-tree-container">
-                    <p>Нажмите "Выбрать корневую папку..." или перетащите папку сюда.</p>
+                    <!-- Убран текст про перетаскивание -->
+                    <p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>
                 </div>
             </div>
 
@@ -43,23 +45,20 @@
                 <div class="output-section">
                     <h2>
                         Содержимое выбранных файлов (<span id="selected-files-count">0</span>):
-                        <!-- Контейнер для индикатора и кнопки отмены -->
                         <span id="content-loading-controls" style="display: none;">
                             <span id="content-load-indicator" class="loading-indicator">Загрузка...</span>
-                            <button id="cancel-content-load-btn" class="cancel-btn">Отмена</button> <!-- Кнопка Отмена -->
+                            <button id="cancel-content-load-btn" class="cancel-btn">Отмена</button>
                         </span>
                     </h2>
                     <textarea id="content-output" readonly placeholder="Содержимое выбранных файлов появится здесь..."></textarea>
                     <button id="copy-content-btn" disabled>Копировать содержимое</button>
                 </div>
-                 <div id="content-status-bar"></div> <!-- Статус ошибок чтения -->
+                 <div id="content-status-bar"></div>
             </div>
         </main>
 
-        <!-- Оверлей для Drag & Drop -->
-        <div id="drag-overlay" style="display: none;">
-            <p>Перетащите папку сюда</p>
-        </div>
+        <!-- Оверлей для Drag & Drop УДАЛЕН -->
+        <!-- <div id="drag-overlay" style="display: none;">...</div> -->
     </div>
 
     <script src="./renderer.js"></script>
