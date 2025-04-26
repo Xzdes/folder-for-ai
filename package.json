@@ -1,13 +1,16 @@
 {
   "name": "folder-for-ai",
-  "version": "1.3.0",
-  "description": "Select or drag-and-drop a folder, view/filter structure, choose files (with cancellation), get content for AI chat.",
+  "version": "1.5.1",
+  "description": "Select or drag-and-drop a folder, view/filter structure, choose files, and drag them to other applications.",
   "main": "main.js",
   "productName": "Folder for AI",
   "scripts": {
       "start": "electron .",
       "test": "echo \"Error: no test specified\" && exit 1",
-      "dist": "electron-builder --win"
+      "dist:win": "electron-builder --win --x64",
+      "dist:linux": "electron-builder --linux --x64",
+      "dist:mac": "electron-builder --mac --x64 --arm64",
+      "dist": "electron-builder --win --linux --mac --x64 --arm64"
   },
   "keywords": [
       "electron",
@@ -19,7 +22,9 @@
       "structure",
       "drag-drop",
       "llm",
-      "prompt"
+      "prompt",
+      "folder",
+      "files"
   ],
   "author": "Guliaev",
   "license": "MIT",
@@ -52,6 +57,34 @@
           ]
         }
       ]
+    },
+    "linux": {
+       "target": [
+         {
+            "target": "AppImage",
+            "arch": ["x64"]
+         },
+         {
+             "target": "deb",
+             "arch": ["x64"]
+         }
+       ],
+       "category": "Utility"
+
+    },
+    "mac": {
+      "target": [
+        {
+            "target": "dmg",
+            "arch": ["x64", "arm64"]
+        },
+        {
+            "target": "zip",
+             "arch": ["x64", "arm64"]
+        }
+      ],
+      "category": "public.app-category.utilities"
+
     }
   }
 }

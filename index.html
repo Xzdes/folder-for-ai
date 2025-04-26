@@ -27,38 +27,34 @@
                     <button id="expand-all-btn" title="Развернуть все папки">Развернуть</button>
                     <button id="collapse-all-btn" title="Свернуть все папки">Свернуть</button>
                 </div>
-                <h2>Структура папки (выберите файлы для анализа):</h2>
+                <h2>Структура папки (выберите файлы):</h2>
                 <div id="file-tree-container">
-                    <!-- Убран текст про перетаскивание -->
                     <p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>
                 </div>
             </div>
 
-            <!-- Правая панель: Вывод -->
+            <!-- Правая панель: Структура и Перетаскиваемые файлы -->
             <div class="panel output-panel">
-                <div class="output-section">
-                    <h2>Полная структура папки:</h2>
-                    <textarea id="structure-output" readonly placeholder="Структура папки появится здесь..."></textarea>
-                    <button id="copy-structure-btn" disabled>Копировать структуру</button>
-                </div>
+                 <!-- ВОЗВРАЩЕНА СЕКЦИЯ СТРУКТУРЫ -->
+                 <div class="output-section structure-section">
+                     <h2>Полная структура папки:</h2>
+                     <textarea id="structure-output" readonly placeholder="Структура папки появится здесь..."></textarea>
+                     <button id="copy-structure-btn" disabled>Копировать структуру</button>
+                 </div>
 
-                <div class="output-section">
-                    <h2>
-                        Содержимое выбранных файлов (<span id="selected-files-count">0</span>):
-                        <span id="content-loading-controls" style="display: none;">
-                            <span id="content-load-indicator" class="loading-indicator">Загрузка...</span>
-                            <button id="cancel-content-load-btn" class="cancel-btn">Отмена</button>
-                        </span>
-                    </h2>
-                    <textarea id="content-output" readonly placeholder="Содержимое выбранных файлов появится здесь..."></textarea>
-                    <button id="copy-content-btn" disabled>Копировать содержимое</button>
-                </div>
-                 <div id="content-status-bar"></div>
+                 <!-- СЕКЦИЯ ДЛЯ ПЕРЕТАСКИВАЕМЫХ ФАЙЛОВ -->
+                 <div class="output-section draggable-section">
+                     <h2>
+                         Файлы для перетаскивания (<span id="selected-files-count">0</span>):
+                     </h2>
+                     <div id="draggable-files-container">
+                         <p class="placeholder-text">Выберите файлы в дереве слева. Они появятся здесь для перетаскивания.</p>
+                         <!-- Сюда будут добавляться элементы файлов -->
+                     </div>
+                 </div>
+                 <!-- Старый вывод контента НЕ возвращаем -->
             </div>
         </main>
-
-        <!-- Оверлей для Drag & Drop УДАЛЕН -->
-        <!-- <div id="drag-overlay" style="display: none;">...</div> -->
     </div>
 
     <script src="./renderer.js"></script>

@@ -1,8 +1,8 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
-// Канал для отправки сигнала отмены загрузки контента
-const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
+// --- Канал для отмены удален ---
+// const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
 
 // Проверяем, что код выполняется в изолированном контексте
 if (process.contextIsolated) {
@@ -27,37 +27,27 @@ if (process.contextIsolated) {
                  }
             },
 
-            // 3. Запросить содержимое выбранных файлов
-            // Сигнал отмены (AbortSignal) не передается через invoke напрямую.
-            // Вместо этого используем отдельный канал 'cancel-file-content'.
-            getFileContent: (filePaths) => {
-                console.log(`Preload: Calling ipcRenderer.invoke("get-file-content") for ${filePaths?.length ?? 0} paths.`);
-                if (Array.isArray(filePaths)) {
-                     // Просто передаем пути файлов
-                     return ipcRenderer.invoke('get-file-content', filePaths);
-                } else {
-                    console.error('Preload: Invalid filePaths passed to getFileContent.');
-                    return Promise.reject(new Error('Invalid file paths array provided'));
-                }
-            },
+            // 3. Запросить содержимое выбранных файлов (УДАЛЕНО)
+            // getFileContent: (filePaths) => { ... },
 
-            // 4. НОВАЯ функция для отправки сигнала отмены в main.js
-            cancelFileContentLoad: () => {
-                console.log(`Preload: Sending cancellation signal on channel "${CANCEL_CONTENT_LOAD_CHANNEL}"`);
-                // Используем ipcRenderer.send, так как нам не нужен ответ
-                ipcRenderer.send(CANCEL_CONTENT_LOAD_CHANNEL);
-            },
+            // 4. Отправить сигнал отмены в main.js (УДАЛЕНО)
+            // cancelFileContentLoad: () => { ... },
 
-            // 5. Копирование в буфер обмена (оставлено для примера, но используется navigator в renderer)
-             copyToClipboard: (text) => {
-                 console.log('Preload: Calling navigator.clipboard.writeText');
-                 if (typeof text === 'string') {
-                    return navigator.clipboard.writeText(text);
+            // 5. НОВАЯ функция для инициации перетаскивания файлов
+            startDrag: (filePaths) => {
+                 if (Array.isArray(filePaths) && filePaths.length > 0) {
+                     console.log(`Preload: Sending "start-drag" event for ${filePaths.length} files.`);
+                     // Используем ipcRenderer.send, так как нам не нужен ответ,
+                     // а нужно просто инициировать действие в main процессе.
+                     ipcRenderer.send('start-drag', filePaths);
                  } else {
-                    console.error('Preload: Invalid text passed to copyToClipboard.');
-                    return Promise.reject(new Error('Invalid text provided for clipboard'));
+                     console.warn('Preload: Invalid or empty filePaths passed to startDrag.');
                  }
-             },
+            },
+
+            // 6. Копирование в буфер обмена (оставлено для примера, но НЕ ИСПОЛЬЗУЕТСЯ в новой логике)
+            // УДАЛЕНО, так как не используется и не относится к текущей задаче.
+            // copyToClipboard: (text) => { ... },
         });
         console.log('Preload: electronAPI exposed successfully.');
     } catch (error) {

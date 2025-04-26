@@ -1,7 +1,8 @@
 // main.js
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
-const path = require('node:path');
+const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron'); // nativeImage снова важен
+const path = require('node:path'); // path нужен
 const fs = require('node:fs/promises');
+const fsSync = require('node:fs'); // Для проверки доступа
 
 // --- Константы ---
 const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
@@ -9,7 +10,6 @@ const IGNORED_ITEMS = new Set([
   '.git', 'node_modules', '.vscode', '.idea', '.DS_Store',
   'Thumbs.db', 'bower_components', '__pycache__',
 ]);
-const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
 
 let mainWindow;
 
@@ -65,7 +65,6 @@ ipcMain.handle('scan-folder-path', async (event, folderPath) => {
         console.error('IPC: [scan-folder-path] Invalid folderPath received.');
         return { success: false, error: 'Некорректный путь к папке.' };
     }
-    // Дополнительная проверка, что путь существует и это папка (дублирует performScan, но для уверенности)
     try {
         const stats = await fs.stat(folderPath);
         if (!stats.isDirectory()) {
@@ -79,136 +78,90 @@ ipcMain.handle('scan-folder-path', async (event, folderPath) => {
     return await performScan(folderPath);
 });
 
-// 3. Получение содержимого файлов с поддержкой ОТМЕНЫ
-ipcMain.handle('get-file-content', async (event, filePaths) => {
-  const requestStartTime = Date.now(); // Замеряем время начала
-  console.log(`IPC: [get-file-content] Received request for ${filePaths?.length ?? 0} files. Start time: ${requestStartTime}`);
-  if (!Array.isArray(filePaths)) {
-      console.error('IPC: [get-file-content] Invalid filePaths received.');
-      return { success: false, content: '', errors: [{ path: 'N/A', message: 'Invalid input' }] };
-  }
 
-  let combinedContent = '';
-  const errors = [];
-  const basePathForRelative = filePaths.length > 0 ? path.dirname(filePaths[0]) : __dirname;
+// 4. Обработчик для инициации перетаскивания файлов (ИЗМЕНЕНО - создаем NativeImage из пути)
+ipcMain.on('start-drag', (event, filePaths) => {
+    console.log(`IPC: [start-drag] Event received. File count: ${filePaths?.length ?? 0}`);
 
-  // --- Логика отмены ---
-  let isCancelled = false;
-  let cancelSignalReceivedTime = null; // Время получения сигнала
-  const cancellationListener = () => {
-      // Этот код выполнится, когда придет сигнал по каналу
-      cancelSignalReceivedTime = Date.now();
-      console.log(`IPC: [get-file-content] <<< Cancellation signal received on "${CANCEL_CONTENT_LOAD_CHANNEL}" at ${cancelSignalReceivedTime} >>> Request start time: ${requestStartTime}`);
-      isCancelled = true;
-      // Слушатель будет удален в finally
-  };
-  // Добавляем слушатель ТОЛЬКО на время выполнения этого запроса
-  ipcMain.once(CANCEL_CONTENT_LOAD_CHANNEL, cancellationListener);
-  console.log(`IPC: [get-file-content] Cancellation listener attached for request ${requestStartTime}.`);
-  // --------------------
+    if (!Array.isArray(filePaths) || filePaths.length === 0) {
+        console.warn('IPC: [start-drag] Ignored: Received invalid or empty filePaths array.');
+        return;
+    }
 
-  try {
-      console.log(`IPC: [get-file-content] Starting file processing loop for request ${requestStartTime}...`);
-      for (let i = 0; i < filePaths.length; i++) {
-          const filePath = filePaths[i];
-          const loopIterationStartTime = Date.now();
+    const validFilePaths = filePaths.filter(p => typeof p === 'string' && p.length > 0);
 
-          // --- ПРОВЕРКА ОТМЕНЫ В НАЧАЛЕ КАЖДОЙ ИТЕРАЦИИ ---
-          if (isCancelled) {
-              const cancelCheckTime = Date.now();
-              console.log(`IPC: [get-file-content] Loop cancelled at index ${i} (Check time: ${cancelCheckTime}). Request start: ${requestStartTime}, Signal received: ${cancelSignalReceivedTime}`);
-              if (!errors.some(e => e.message === 'Operation cancelled by user')) {
-                   errors.push({ path: 'N/A', message: 'Operation cancelled by user' });
-              }
-              break; // Выход из цикла for
-          }
-          // -----------------------------------------------
+    if (validFilePaths.length === 0) {
+        console.warn('IPC: [start-drag] Ignored: No valid string paths found in the array.');
+        return;
+    }
 
-          console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Processing file ${i + 1}/${filePaths.length}: ${filePath} (Iteration start: ${loopIterationStartTime})`);
+    let fileIcon; // Объявляем переменную для иконки заранее
 
-          if (!filePath || typeof filePath !== 'string') {
-              console.warn(`IPC: [get-file-content] [Req ${requestStartTime}] Skipping invalid file path entry: ${filePath}`);
-              errors.push({ path: String(filePath), message: 'Invalid path entry' });
-              continue; // Переход к следующей итерации
-          }
+    try {
+        // Формируем путь к файлу иконки
+        const iconPath = path.join(__dirname, 'assets', 'drag-icon.png');
 
-          const relativePath = path.relative(basePathForRelative, filePath);
-          try {
-               // Проверка перед fs.stat
-               if (isCancelled) {
-                   console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Cancelled before stat for ${relativePath}`);
-                   if (!errors.some(e => e.message === 'Operation cancelled by user')) { errors.push({ path: 'N/A', message: 'Operation cancelled by user' }); }
-                   break;
-               }
-              const stats = await fs.stat(filePath);
+        // Пытаемся создать NativeImage ИЗ ПУТИ К ФАЙЛУ
+        try {
+            console.log(`IPC: [start-drag] Attempting to create NativeImage from path: ${iconPath}`);
+            fileIcon = nativeImage.createFromPath(iconPath);
 
-              if (!stats.isFile()) {
-                  console.warn(`IPC: [get-file-content] [Req ${requestStartTime}] ${relativePath} is not a file. Skipping.`);
-                  combinedContent += `--- File: ${relativePath} ---\n[Not a File]\n--- End: ${relativePath} ---\n\n`;
-                  errors.push({ path: relativePath, message: 'Not a file' });
-                  continue;
-              }
+            if (!fileIcon || fileIcon.isEmpty()) {
+                 // Если createFromPath вернул пустой объект (например, файл не найден или не изображение)
+                 console.error(`IPC: [start-drag] Failed to create valid NativeImage from path: ${iconPath}. Result is empty.`);
+                 // Fallback на минимальную иконку из Data URL, которая работала раньше (хоть и с возможным "залипанием")
+                  console.log('IPC: [start-drag] Using fallback minimal icon from Data URL.');
+                  const minimalIconDataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                  fileIcon = nativeImage.createFromDataURL(minimalIconDataURL);
+                  if (fileIcon.isEmpty()) { // Крайний случай - если и это не сработало
+                      console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag.");
+                      return;
+                  }
+            } else {
+                console.log(`IPC: [start-drag] Successfully created NativeImage from path. Size: ${fileIcon.getSize().width}x${fileIcon.getSize().height}, Empty: ${fileIcon.isEmpty()}`);
+            }
 
-              if (stats.size > MAX_FILE_SIZE_BYTES) {
-                   console.warn(`IPC: [get-file-content] [Req ${requestStartTime}] File too large ${relativePath} (${stats.size} bytes). Skipping content.`);
-                  combinedContent += `--- File: ${relativePath} ---\n[File Too Large To Include Content (> ${MAX_FILE_SIZE_BYTES / 1024 / 1024} MB)]\n--- End: ${relativePath} ---\n\n`;
-                  errors.push({ path: relativePath, message: 'File too large' });
-                  continue;
-              }
+        } catch (createPathError) {
+             // Ловим ошибку именно при создании NativeImage из пути
+             console.error(`IPC: [start-drag] Error during nativeImage.createFromPath("${iconPath}"):`, createPathError);
+             // Fallback на минимальную иконку из Data URL
+             console.log('IPC: [start-drag] Using fallback minimal icon from Data URL due to createFromPath error.');
+             const minimalIconDataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+             fileIcon = nativeImage.createFromDataURL(minimalIconDataURL);
+             if (fileIcon.isEmpty()) {
+                console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag.");
+                return;
+             }
+        }
 
-               // Проверка перед fs.readFile
-               if (isCancelled) {
-                   console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Cancelled before readFile for ${relativePath}`);
-                   if (!errors.some(e => e.message === 'Operation cancelled by user')) { errors.push({ path: 'N/A', message: 'Operation cancelled by user' }); }
-                   break;
-               }
-              console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Reading file content for ${relativePath}...`);
-              const readStartTime = Date.now();
-              const content = await fs.readFile(filePath, 'utf-8'); // <--- ПОТЕНЦИАЛЬНО ДОЛГАЯ ОПЕРАЦИЯ
-              const readEndTime = Date.now();
-              console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Finished reading ${relativePath}. Length: ${content.length}. Time: ${readEndTime - readStartTime}ms`);
+        // Теперь у нас точно есть какой-то объект fileIcon (либо из файла, либо из data url)
 
-              // Дополнительная проверка ПОСЛЕ чтения (на случай если сигнал пришел во время чтения)
-              if (isCancelled) {
-                    console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Cancelled after readFile for ${relativePath}, content not appended.`);
-                   if (!errors.some(e => e.message === 'Operation cancelled by user')) { errors.push({ path: 'N/A', message: 'Operation cancelled by user' }); }
-                   break;
-              }
-              // Собираем контент только если не отменено
-              combinedContent += `--- File: ${relativePath} ---\n\`\`\`text\n${content}\n\`\`\`\n--- End: ${relativePath} ---\n\n`;
+        // ДОПОЛНИТЕЛЬНЫЙ ЛОГ перед вызовом
+        console.log(`IPC: [start-drag] ===> Attempting to call event.sender.startDrag with:`);
+        console.log(`     Files (${validFilePaths.length}): [${validFilePaths.join(', ')}]`);
+        console.log(`     Icon object created. Size: ${fileIcon.getSize().width}x${fileIcon.getSize().height}, Empty: ${fileIcon.isEmpty()}`);
 
-          } catch (error) {
-               if (isCancelled) {
-                   console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Cancelled during error handling for ${relativePath}.`);
-                   if (!errors.some(e => e.message === 'Operation cancelled by user')) { errors.push({ path: 'N/A', message: 'Operation cancelled by user' }); }
-                   break; // Выходим из цикла
-               }
-              console.error(`IPC: [get-file-content] [Req ${requestStartTime}] Error processing file ${relativePath}:`, error);
-              combinedContent += `--- File: ${relativePath} ---\n[Error Reading File: ${error.code || error.message}]\n--- End: ${relativePath} ---\n\n`;
-              errors.push({ path: relativePath, message: `Read Error: ${error.code || error.message}` });
-          }
-           const loopIterationEndTime = Date.now();
-           console.log(`IPC: [get-file-content] [Req ${requestStartTime}] Finished iteration ${i} for ${relativePath}. Duration: ${loopIterationEndTime - loopIterationStartTime}ms`);
+        // Запускаем системную операцию Drag&Drop, передавая ОБЪЕКТ NativeImage
+        event.sender.startDrag({
+            files: validFilePaths, // Массив путей к файлам
+            icon: fileIcon        // ОБЪЕКТ NativeImage
+        });
+        console.log(`IPC: [start-drag] <=== System drag initiated successfully (call returned).`);
 
-      } // Конец цикла for
-      console.log(`IPC: [get-file-content] File processing loop finished for request ${requestStartTime}.`);
-  } finally {
-      // --- Гарантированное удаление слушателя отмены ---
-      const listenerRemoved = ipcMain.removeListener(CANCEL_CONTENT_LOAD_CHANNEL, cancellationListener);
-      console.log(`IPC: [get-file-content] Cancellation listener removed for request ${requestStartTime}. Removed: ${listenerRemoved}. Final isCancelled state: ${isCancelled}`);
-      // ------------------------------------------------------
-  }
-
-  const requestEndTime = Date.now();
-  console.log(`IPC: [get-file-content] Content preparation finished for request ${requestStartTime}. Cancelled: ${isCancelled}. Length: ${combinedContent.length}. Errors: ${errors.length}. Total time: ${requestEndTime - requestStartTime}ms`);
-  return { success: true, content: combinedContent, errors: errors };
+    } catch (error) {
+         // Ловим ошибки самого startDrag (если они возникнут)
+         console.error('IPC: [start-drag] Failed to initiate system drag:', error);
+    }
 });
+
+console.log("<<<<< Main Process: Listener for 'start-drag' is set up. >>>>>");
+
 
 // --- Вспомогательные функции ---
 
 // Общая функция сканирования (без изменений)
 async function performScan(folderPath) {
-    console.log(`SCAN: Scanning folder: ${folderPath}`); // Добавим префикс SCAN
+    console.log(`SCAN: Scanning folder: ${folderPath}`);
     try {
         const stats = await fs.stat(folderPath);
         if (!stats.isDirectory()) {
@@ -238,7 +191,6 @@ async function scanDirectory(dirPath, basePath) {
     await fs.access(dirPath, fs.constants.R_OK);
     items = await fs.readdir(dirPath, { withFileTypes: true });
   } catch (error) {
-    // console.warn(`SCAN: Cannot read directory ${dirPath}: ${error.message}`); // Можно раскомментировать для детальной отладки прав
     node.error = error.code || error.message; node.children = null; return node;
   }
   const childPromises = [];
@@ -247,7 +199,17 @@ async function scanDirectory(dirPath, basePath) {
     const itemName = item.name;
     const itemIsIgnored = IGNORED_ITEMS.has(itemName);
     if (item.isDirectory()) { childPromises.push(scanDirectory(itemPath, basePath)); }
-    else if (item.isFile()) { childPromises.push(Promise.resolve({ name: itemName, path: itemPath, relativePath: path.relative(basePath, itemPath), isDirectory: false, ignored: itemIsIgnored, error: null, children: undefined })); }
+    else if (item.isFile()) {
+        childPromises.push(Promise.resolve({
+            name: itemName,
+            path: itemPath,
+            relativePath: path.relative(basePath, itemPath),
+            isDirectory: false,
+            ignored: itemIsIgnored,
+            error: null,
+            children: undefined
+        }));
+    }
   }
   try {
       const childrenResults = await Promise.all(childPromises);
