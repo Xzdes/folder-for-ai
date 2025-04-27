@@ -8,11 +8,12 @@ const expandAllBtn = document.getElementById('expand-all-btn');
 const collapseAllBtn = document.getElementById('collapse-all-btn');
 const scanIndicator = document.getElementById('scan-indicator');
 const lastFolderInfoSpan = document.getElementById('last-folder-info');
-// Элементы правой панели
-const structureOutput = document.getElementById('structure-output'); // ВОЗВРАЩЕНО
-const copyStructureBtn = document.getElementById('copy-structure-btn'); // ВОЗВРАЩЕНО
+const structureOutput = document.getElementById('structure-output');
+const copyStructureBtn = document.getElementById('copy-structure-btn');
 const draggableFilesContainer = document.getElementById('draggable-files-container');
 const selectedFilesCountSpan = document.getElementById('selected-files-count');
+// НОВАЯ ССЫЛКА на кнопку закрытия
+const windowCloseBtn = document.getElementById('window-close-btn');
 
 // --- Глобальные переменные состояния ---
 let currentRootPath = null;
@@ -49,7 +50,7 @@ selectFolderBtn.addEventListener('click', async () => {
     }
 });
 
-// 2. Копирование структуры (ВОЗВРАЩЕНО)
+// 2. Копирование структуры
 copyStructureBtn.addEventListener('click', async () => {
   await copyToClipboard(structureOutput.value, copyStructureBtn, 'Структура скопирована!');
 });
@@ -96,6 +97,14 @@ draggableFilesContainer.addEventListener('dragstart', (event) => {
     }
 });
 
+// 7. НОВЫЙ Обработчик клика по кнопке Закрыть окно
+if (windowCloseBtn) {
+    windowCloseBtn.addEventListener('click', () => {
+        console.log('Renderer: Close button clicked.');
+        window.electronAPI.windowClose(); // Вызываем API для закрытия
+    });
+}
+
 
 // --- Основные функции ---
 
@@ -109,16 +118,14 @@ async function handleFolderSelected(folderPath, treeData) {
     saveLastFolderPath(currentRootPath);
     displayLastFolderPath();
 
-    resetUI(false); // Сбрасываем UI, но не статус бар
+    resetUI(false);
 
     renderFileTreeIterative(currentTreeData, fileTreeContainer);
 
-    // Генерируем и выводим структуру папки (ВОЗВРАЩЕНО)
     const structureText = generateStructureTextIterative(currentTreeData);
     structureOutput.value = structureText;
-    copyStructureBtn.disabled = !structureText; // Активируем кнопку, если структура есть
+    copyStructureBtn.disabled = !structureText;
 
-    // Сбрасываем/обновляем область файлов для перетаскивания
     updateDraggableFilesArea();
 }
 
@@ -135,12 +142,10 @@ function resetUI(clearStatus = true) {
     fileTreeContainer.innerHTML = '<p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>';
     searchInput.value = '';
 
-    // Очищаем и деактивируем структуру (ВОЗВРАЩЕНО)
     structureOutput.value = '';
     structureOutput.placeholder = 'Структура папки появится здесь...';
     copyStructureBtn.disabled = true;
 
-    // Очищаем новую область для перетаскивания
     draggableFilesContainer.innerHTML = '<p class="placeholder-text">Выберите файлы в дереве слева. Они появятся здесь для перетаскивания.</p>';
     updateSelectedFilesCount(0);
 
@@ -159,7 +164,6 @@ function setScanIndicator(isLoading) {
 
 // ИТЕРАТИВНАЯ функция для отрисовки дерева файлов (без изменений)
 function renderFileTreeIterative(rootNode, containerElement) {
-    // ... (код без изменений, как был в предыдущем сообщении) ...
     containerElement.innerHTML = ''; if (!rootNode || !rootNode.name) { containerElement.innerHTML = '<p>Не удалось загрузить структуру папки.</p>'; console.error("Invalid root node provided:", rootNode); return; } const stack = []; const initialUl = document.createElement('ul'); containerElement.appendChild(initialUl); if (rootNode.children && rootNode.children.length > 0) { for (let i = rootNode.children.length - 1; i >= 0; i--) { stack.push({ node: rootNode.children[i], parentElement: initialUl, level: 0 }); } } else { containerElement.innerHTML = '<p>Папка пуста или недоступна.</p>'; return; } while (stack.length > 0) { const { node, parentElement, level } = stack.pop(); const li = document.createElement('li'); li.dataset.path = node.path; const label = document.createElement('label'); label.classList.add('item-label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.path = node.path; checkbox.dataset.isDirectory = node.isDirectory; checkbox.checked = false; checkbox.disabled = node.ignored || !!node.error; if (node.isDirectory) label.classList.add('is-directory'); if (node.ignored) label.classList.add('is-ignored'); if (node.error) label.classList.add('has-error'); if (node.error) { label.title = `Ошибка доступа: ${node.error}`; } else if (node.ignored) { label.title = `Игнорируется по умолчанию`; } else { label.title = node.relativePath || node.name; } label.appendChild(checkbox); const nameSpan = document.createElement('span'); nameSpan.classList.add('node-name'); nameSpan.textContent = ` ${node.name}`; label.appendChild(nameSpan); li.appendChild(label); parentElement.appendChild(li); if (node.isDirectory && node.children && node.children.length > 0 && !node.ignored && !node.error) { const childUl = document.createElement('ul'); li.appendChild(childUl); for (let i = node.children.length - 1; i >= 0; i--) { stack.push({ node: node.children[i], parentElement: childUl, level: level + 1 }); } } } if (searchInput.value) { filterTree(searchInput.value); }
 }
 
@@ -175,7 +179,6 @@ function handleCheckboxChange(event) {
     childCheckboxes.forEach(childCb => { if (!childCb.disabled) { childCb.checked = isChecked; } });
   }
 
-  // Запускаем обновление области перетаскивания
   setTimeout(updateDraggableFilesArea, 0);
 }
 
@@ -223,8 +226,7 @@ function updateDraggableFilesArea() {
     }
 }
 
-// --- ВОЗВРАЩЕНА функция генерации структуры ---
-// ИТЕРАТИВНАЯ функция для генерации текстовой структуры папки
+// Функция генерации структуры (без изменений)
 function generateStructureTextIterative(rootNode) {
     if (!rootNode || !rootNode.name) {
         console.error("Invalid root node provided for structure generation:", rootNode);
@@ -232,30 +234,23 @@ function generateStructureTextIterative(rootNode) {
     }
     let output = `${rootNode.name}/\n`;
     const stack = [];
-    // Начинаем с дочерних элементов корневого узла
     if (rootNode.children && rootNode.children.length > 0) {
         const children = rootNode.children;
-        // Добавляем в стек в обратном порядке для правильного обхода
         for (let i = children.length - 1; i >= 0; i--) {
             stack.push({ node: children[i], indent: '', isLast: i === children.length - 1 });
         }
     } else {
-        // Если у корневого узла нет детей
-        return output.trim() + (rootNode.error ? ` (Error: ${rootNode.error})` : ''); // Возвращаем только имя корневой папки
+        return output.trim() + (rootNode.error ? ` (Error: ${rootNode.error})` : '');
     }
-
     while (stack.length > 0) {
         const { node, indent, isLast } = stack.pop();
         const prefix = isLast ? '└── ' : '├── ';
         const childIndentBase = indent + (isLast ? '    ' : '│   ');
-
         output += `${indent}${prefix}${node.name}`;
         if (node.isDirectory) output += '/';
         if (node.ignored) output += ' (ignored)';
         if (node.error) output += ` (Error: ${node.error})`;
         output += '\n';
-
-        // Добавляем дочерние элементы текущего узла в стек, если это директория и не игнорируется/не ошибка
         if (node.isDirectory && node.children && node.children.length > 0 && !node.ignored && !node.error) {
             const children = node.children;
             for (let i = children.length - 1; i >= 0; i--) {
@@ -267,44 +262,33 @@ function generateStructureTextIterative(rootNode) {
 }
 
 
-// --- ВОЗВРАЩЕНА функция копирования (используется для структуры) ---
-// Вспомогательная функция для копирования в буфер обмена
+// Функция копирования (без изменений)
 async function copyToClipboard(text, buttonElement, successMessage) {
     if (!text || !buttonElement) return;
     const originalText = buttonElement.textContent;
     buttonElement.disabled = true;
     try {
-        // Используем navigator.clipboard API, которое доступно в Electron >= 5
         await navigator.clipboard.writeText(text);
         buttonElement.textContent = successMessage;
         console.log('Renderer: Text copied to clipboard.');
-
-        // Возвращаем текст и состояние кнопки через некоторое время
         setTimeout(() => {
             if (buttonElement) {
                 buttonElement.textContent = originalText;
-                // Повторно включаем кнопку, если есть что копировать
                 if (buttonElement === copyStructureBtn && structureOutput.value) {
                     buttonElement.disabled = false;
                 }
-                 // Логика для других кнопок (если будут)
-                 // else if (buttonElement === copyContentBtn && contentOutput.value) { buttonElement.disabled = false; }
                  else {
-                    // На всякий случай, если значение стало пустым за время таймаута
                     buttonElement.disabled = !text;
                  }
             }
         }, 1500);
-
     } catch (err) {
         console.error('Ошибка копирования: ', err);
         statusBar.textContent = 'Ошибка при копировании в буфер обмена.';
         buttonElement.textContent = 'Ошибка!';
-        // Возвращаем исходное состояние кнопки после ошибки
         setTimeout(() => {
             if (buttonElement) {
                 buttonElement.textContent = originalText;
-                 // Повторно включаем кнопку, если есть что копировать
                 if (buttonElement === copyStructureBtn && structureOutput.value) {
                      buttonElement.disabled = false;
                 } else {

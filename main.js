@@ -1,23 +1,32 @@
 // main.js
-const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron'); // nativeImage снова важен
-const path = require('node:path'); // path нужен
+const { app, BrowserWindow, ipcMain, dialog, nativeImage } = require('electron');
+const path = require('node:path');
 const fs = require('node:fs/promises');
-const fsSync = require('node:fs'); // Для проверки доступа
+const fsSync = require('node:fs');
 
 // --- Константы ---
-const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50 MB
+const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 const IGNORED_ITEMS = new Set([
   '.git', 'node_modules', '.vscode', '.idea', '.DS_Store',
   'Thumbs.db', 'bower_components', '__pycache__',
 ]);
 
+// Убираем константы для TitleBarOverlay, т.к. он больше не используется
+// const TITLE_BAR_COLOR = '#1c1f26';
+// const TITLE_BAR_SYMBOL_COLOR = '#e8eaf0';
+
+
 let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 850,
+    width: 1100,
+    height: 900,
     autoHideMenuBar: true,
+    // --- Изменения для кастомной шапки ---
+    frame: false, // Оставляем frame: false, т.к. рисуем свои кнопки
+    // titleBarStyle: 'hidden', // Эта опция теперь не нужна, т.к. frame: false
+    // --- Конец изменений ---
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
@@ -25,8 +34,11 @@ function createWindow() {
     },
   });
 
+  // --- Убираем вызов setTitleBarOverlay ---
+  // if (process.platform === 'win32') { ... }
+
   mainWindow.loadFile('index.html');
-  // mainWindow.webContents.openDevTools(); // Раскомментируйте для отладки
+  // mainWindow.webContents.openDevTools();
   mainWindow.on('closed', () => { mainWindow = null; });
 }
 
@@ -42,6 +54,7 @@ app.on('window-all-closed', () => {
 
 // 1. Выбор папки через диалог
 ipcMain.handle('select-folder', async () => {
+  // ... (без изменений) ...
   if (!mainWindow) return { success: false, error: 'Главное окно не найдено.' };
   console.log('IPC: [select-folder] Received request.');
   const result = await dialog.showOpenDialog(mainWindow, {
@@ -60,6 +73,7 @@ ipcMain.handle('select-folder', async () => {
 
 // 2. Сканирование переданного пути
 ipcMain.handle('scan-folder-path', async (event, folderPath) => {
+    // ... (без изменений) ...
     console.log(`IPC: [scan-folder-path] Received request for: ${folderPath}`);
     if (!folderPath || typeof folderPath !== 'string') {
         console.error('IPC: [scan-folder-path] Invalid folderPath received.');
@@ -79,87 +93,74 @@ ipcMain.handle('scan-folder-path', async (event, folderPath) => {
 });
 
 
-// 4. Обработчик для инициации перетаскивания файлов (ИЗМЕНЕНО - создаем NativeImage из пути)
+// 4. Обработчик для инициации перетаскивания файлов
 ipcMain.on('start-drag', (event, filePaths) => {
+    // ... (без изменений, используем createFromPath с fallback на DataURL) ...
     console.log(`IPC: [start-drag] Event received. File count: ${filePaths?.length ?? 0}`);
-
     if (!Array.isArray(filePaths) || filePaths.length === 0) {
-        console.warn('IPC: [start-drag] Ignored: Received invalid or empty filePaths array.');
-        return;
+        console.warn('IPC: [start-drag] Ignored: Received invalid or empty filePaths array.'); return;
     }
-
     const validFilePaths = filePaths.filter(p => typeof p === 'string' && p.length > 0);
-
     if (validFilePaths.length === 0) {
-        console.warn('IPC: [start-drag] Ignored: No valid string paths found in the array.');
-        return;
+        console.warn('IPC: [start-drag] Ignored: No valid string paths found in the array.'); return;
     }
-
-    let fileIcon; // Объявляем переменную для иконки заранее
-
+    let fileIcon;
     try {
-        // Формируем путь к файлу иконки
         const iconPath = path.join(__dirname, 'assets', 'drag-icon.png');
-
-        // Пытаемся создать NativeImage ИЗ ПУТИ К ФАЙЛУ
         try {
             console.log(`IPC: [start-drag] Attempting to create NativeImage from path: ${iconPath}`);
             fileIcon = nativeImage.createFromPath(iconPath);
-
             if (!fileIcon || fileIcon.isEmpty()) {
-                 // Если createFromPath вернул пустой объект (например, файл не найден или не изображение)
                  console.error(`IPC: [start-drag] Failed to create valid NativeImage from path: ${iconPath}. Result is empty.`);
-                 // Fallback на минимальную иконку из Data URL, которая работала раньше (хоть и с возможным "залипанием")
-                  console.log('IPC: [start-drag] Using fallback minimal icon from Data URL.');
-                  const minimalIconDataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
-                  fileIcon = nativeImage.createFromDataURL(minimalIconDataURL);
-                  if (fileIcon.isEmpty()) { // Крайний случай - если и это не сработало
-                      console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag.");
-                      return;
-                  }
+                 console.log('IPC: [start-drag] Using fallback minimal icon from Data URL.');
+                 const minimalIconDataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
+                 fileIcon = nativeImage.createFromDataURL(minimalIconDataURL);
+                 if (fileIcon.isEmpty()) { console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag."); return; }
             } else {
                 console.log(`IPC: [start-drag] Successfully created NativeImage from path. Size: ${fileIcon.getSize().width}x${fileIcon.getSize().height}, Empty: ${fileIcon.isEmpty()}`);
             }
-
         } catch (createPathError) {
-             // Ловим ошибку именно при создании NativeImage из пути
              console.error(`IPC: [start-drag] Error during nativeImage.createFromPath("${iconPath}"):`, createPathError);
-             // Fallback на минимальную иконку из Data URL
              console.log('IPC: [start-drag] Using fallback minimal icon from Data URL due to createFromPath error.');
              const minimalIconDataURL = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=';
              fileIcon = nativeImage.createFromDataURL(minimalIconDataURL);
-             if (fileIcon.isEmpty()) {
-                console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag.");
-                return;
-             }
+             if (fileIcon.isEmpty()) { console.error("IPC: [start-drag] CRITICAL: Failed even to create icon from Data URL! Aborting drag."); return; }
         }
-
-        // Теперь у нас точно есть какой-то объект fileIcon (либо из файла, либо из data url)
-
-        // ДОПОЛНИТЕЛЬНЫЙ ЛОГ перед вызовом
         console.log(`IPC: [start-drag] ===> Attempting to call event.sender.startDrag with:`);
         console.log(`     Files (${validFilePaths.length}): [${validFilePaths.join(', ')}]`);
         console.log(`     Icon object created. Size: ${fileIcon.getSize().width}x${fileIcon.getSize().height}, Empty: ${fileIcon.isEmpty()}`);
-
-        // Запускаем системную операцию Drag&Drop, передавая ОБЪЕКТ NativeImage
-        event.sender.startDrag({
-            files: validFilePaths, // Массив путей к файлам
-            icon: fileIcon        // ОБЪЕКТ NativeImage
-        });
+        event.sender.startDrag({ files: validFilePaths, icon: fileIcon });
         console.log(`IPC: [start-drag] <=== System drag initiated successfully (call returned).`);
-
     } catch (error) {
-         // Ловим ошибки самого startDrag (если они возникнут)
          console.error('IPC: [start-drag] Failed to initiate system drag:', error);
     }
 });
 
-console.log("<<<<< Main Process: Listener for 'start-drag' is set up. >>>>>");
+// 5. НОВЫЕ Обработчики для кнопок управления окном
+ipcMain.on('window-close', () => {
+    console.log('IPC: Received window-close request.');
+    if (mainWindow) {
+        mainWindow.close();
+    }
+});
+
+// Сюда можно добавить обработчики для 'window-minimize', 'window-maximize'
+// ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
+// ipcMain.on('window-maximize', () => {
+//     if (mainWindow) {
+//         if (mainWindow.isMaximized()) {
+//             mainWindow.unmaximize();
+//         } else {
+//             mainWindow.maximize();
+//         }
+//     }
+// });
+
+console.log("<<<<< Main Process: Window control listeners are set up. >>>>>");
 
 
 // --- Вспомогательные функции ---
-
-// Общая функция сканирования (без изменений)
+// ... (scanDirectory и performScan без изменений) ...
 async function performScan(folderPath) {
     console.log(`SCAN: Scanning folder: ${folderPath}`);
     try {
@@ -180,7 +181,6 @@ async function performScan(folderPath) {
     }
 }
 
-// Рекурсивное сканирование директории (без изменений)
 async function scanDirectory(dirPath, basePath) {
   const name = path.basename(dirPath);
   const isIgnored = IGNORED_ITEMS.has(name);

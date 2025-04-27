@@ -1,160 +1,353 @@
-/* style.css */
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    margin: 0;
-    padding: 0;
-    background-color: #f4f4f4;
-    display: flex;
-    flex-direction: column;
-    height: 100vh; /* Занимаем всю высоту */
-    overflow: hidden; /* Предотвращаем прокрутку body */
-    position: relative; /* Для позиционирования */
+/* style.css - Refined Dark Theme v8 - Custom Close Button */
+
+/* --- Цветовая палитра --- */
+:root {
+    --bg-darkest: #14161a;
+    --bg-darker: #1c1f26;
+    --bg-dark: #252931;
+    --bg-medium: #353a45;
+    --bg-light: #5a6172;
+    --bg-hover-item: rgba(255, 255, 255, 0.07);
+    --bg-folder-item: rgba(255, 255, 255, 0.03);
+
+    --text-primary: #e8eaf0;
+    --text-secondary: #b0b8d0;
+    --text-tertiary: #808aa0;
+    --text-folder: #f0f2f8;
+    --text-file: #cdd3e0;
+
+    --border-color: #454a5a;
+    --border-highlight: #e8c06a;
+    --border-gradient-start: rgba(100, 108, 128, 0.6);
+    --border-gradient-end: rgba(100, 108, 128, 0.1);
+
+
+    --accent-gold: #e8c06a;
+    --accent-gold-hover: #f8d888;
+    --accent-gold-transparent: rgba(232, 192, 106, 0.18);
+    --accent-gold-glow: rgba(232, 192, 106, 0.35);
+    --accent-gradient-start: #ab8b40;
+    --accent-gradient-end: #e8c06a;
+
+    --error-color: #ff9090;
+    --error-bg: rgba(255, 144, 144, 0.12);
+    --error-border: rgba(255, 144, 144, 0.6);
+
+    /* --title-bar-height: 32px;  Больше не нужен, т.к. делаем полностью свою шапку */
 }
 
-.container {
-    padding: 15px;
+/* --- Общие стили --- */
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+body {
+    font-family: "Segoe UI", "Roboto", "Helvetica Neue", Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-darkest);
+    background-image: radial-gradient(circle at top left, rgba(40, 44, 52, 0.5) 0%, transparent 40%),
+                      radial-gradient(circle at bottom right, rgba(32, 35, 42, 0.6) 0%, transparent 50%);
+    color: var(--text-primary);
     display: flex;
     flex-direction: column;
-    flex-grow: 1; /* Контейнер растягивается */
-    overflow: hidden; /* Предотвращаем прокрутку контейнера */
-    position: relative; /* Для drag-overlay */
+    height: 100vh;
+    overflow: hidden;
+    position: relative;
+    /* padding-top: var(--title-bar-height); Убираем отступ */
+}
+
+/* --- Стили для перетаскивания окна --- */
+body {
+    -webkit-app-region: no-drag;
 }
 
 header {
-    margin-bottom: 15px;
-    padding-bottom: 10px;
-    border-bottom: 1px solid #ccc;
+     -webkit-app-region: drag; /* Таскаем за шапку */
+     /* margin-top: calc(-1 * var(--title-bar-height)); Убираем компенсацию */
+     min-height: 40px; /* Минимальная высота для захвата */
+     position: relative; /* Для позиционирования кнопок окна */
 }
 
+header button,
+header input,
+header a,
+header select,
+.panel, /* Панели не должны быть перетаскиваемыми */
+#file-tree-container label, /* Метки в дереве */
+#file-tree-container input,
+textarea,
+.draggable-file-item /* Элементы для D&D файлов */
+{
+    -webkit-app-region: no-drag;
+}
+/* --- Конец стилей для перетаскивания --- */
+
+
+.container {
+    padding: 0; /* Убираем паддинг у контейнера, он будет у main */
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    overflow: hidden;
+    position: relative;
+}
+
+/* --- Заголовок (Шапка) - Обновленные стили --- */
+header {
+    margin-bottom: 0; /* Убираем отступ снизу */
+    padding: 10px 15px 10px 15px; /* Уменьшаем паддинги */
+    background: linear-gradient(to bottom, var(--bg-dark) 0%, var(--bg-darker) 100%); /* Слегка изменим градиент */
+    border-radius: 0;
+    border: none;
+    border-bottom: 1px solid var(--border-color);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3); /* Уменьшим тень */
+    flex-shrink: 0; /* Шапка не сжимается */
+}
+
+/* --- НОВОЕ: Контейнер для кнопок окна --- */
+.window-controls {
+    position: absolute;
+    top: 0;
+    right: 0;
+    height: 40px; /* Примерная высота области кнопок */
+    display: flex;
+    align-items: center;
+    padding: 0 5px;
+    -webkit-app-region: no-drag; /* Сам контейнер не перетаскивается */
+}
+
+.control-button {
+    -webkit-app-region: no-drag; /* Кнопки не перетаскиваются */
+    padding: 0; /* Убираем внутренние отступы */
+    margin: 0 2px; /* Небольшой отступ между кнопками */
+    width: 36px; /* Фиксированная ширина */
+    height: 30px; /* Фиксированная высота */
+    line-height: 30px; /* Центрируем символ по вертикали */
+    font-size: 16px; /* Размер символа */
+    font-weight: bold;
+    text-align: center;
+    color: var(--text-secondary);
+    background-color: transparent; /* Прозрачный фон */
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.15s, color 0.15s;
+    outline: none;
+    /* Убираем тени и градиенты от общих стилей button */
+    box-shadow: none;
+    background-image: none;
+}
+
+.control-button:hover {
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+}
+.control-button:active {
+    background-color: var(--bg-medium);
+    transform: none; /* Убираем эффект нажатия */
+}
+
+.close-button:hover {
+    background-color: #e81123; /* Красный фон при наведении на закрытие */
+    color: #fff; /* Белый текст */
+}
+.close-button:active {
+    background-color: #f1707a; /* Светлее красный при нажатии */
+    color: #fff;
+}
+/* --- Конец стилей кнопок окна --- */
+
+
 header h1 {
-    margin: 0 0 10px 0;
+    margin: 5px 0 15px 0; /* Уменьшим отступы */
+    color: var(--accent-gold);
+    font-weight: 600; /* Вернем нормальную жирность */
+    font-size: 1.3em; /* Уменьшим, т.к. шапка стала ниже */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    letter-spacing: 0.5px;
+    background: linear-gradient(to right, var(--accent-gold-hover), var(--accent-gold));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-align: center;
+    padding-bottom: 0; /* Убираем лишний паддинг */
+    line-height: 1.2; /* Уменьшим высоту строки */
 }
 
 .folder-selection {
     display: flex;
-    align-items: center; /* Выравниваем элементы по вертикали */
-    gap: 10px; /* Пространство между кнопкой и индикатором/инфо */
-    flex-wrap: wrap; /* Разрешаем перенос, если не влезает */
+    align-items: center;
+    gap: 10px; /* Уменьшим */
+    flex-wrap: wrap;
+    justify-content: center;
 }
 
 #status-bar {
-    margin-top: 8px;
-    font-size: 0.9em;
-    color: #555;
-    min-height: 1.2em;
-    word-break: break-all; /* Перенос длинных путей */
+    margin-top: 10px;
+    font-size: 0.85em; /* Меньше */
+    color: var(--text-secondary);
+    min-height: 1.1em;
+    word-break: break-all;
+    text-align: center;
 }
 
 #last-folder-info {
     font-size: 0.8em;
-    color: #666;
-    display: inline-flex; /* Чтобы кнопка была рядом */
+    color: var(--text-secondary);
+    display: inline-flex;
     align-items: center;
 }
 #last-folder-info button {
-    font-size: 0.9em; /* Кнопка "Загрузить" чуть меньше */
-    padding: 2px 5px;
-    margin-left: 5px;
+    font-size: 0.85em; /* Меньше */
+    padding: 4px 10px; /* Меньше */
+    margin-left: 8px;
 }
 
 
-.content-area {
+/* --- Основная область и панели --- */
+/* Добавляем паддинги для main */
+main.content-area {
+    padding: 25px 30px; /* Паддинги переехали сюда */
     display: flex;
-    flex-grow: 1; /* Занимает оставшееся место */
-    overflow: hidden; /* Важно для прокрутки панелей */
-    gap: 15px; /* Пространство между панелями */
+    flex-grow: 1;
+    overflow: hidden;
+    gap: 30px;
+    /* padding-top: 10px; Убираем */
 }
 
 .panel {
-    background-color: #fff;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    padding: 15px;
+    background: linear-gradient(165deg, var(--bg-darker) 0%, var(--bg-dark) 100%);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 25px; /* Уменьшим паддинг панелей */
     display: flex;
     flex-direction: column;
-    overflow: hidden; /* Панель не должна выходить за рамки */
+    overflow: hidden;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35); /* Чуть изменим тень */
 }
 
 .file-tree-panel {
-    flex-basis: 40%; /* Начальная ширина левой панели */
-    min-width: 250px;
-    position: relative; /* Для позиционирования .tree-controls */
+    flex-basis: 43%;
+    min-width: 340px;
+    position: relative;
 }
 
 .output-panel {
-    flex-basis: 60%; /* Начальная ширина правой панели */
-    min-width: 300px;
-    display: flex; /* Делаем панель flex-контейнером */
-    flex-direction: column; /* Секции идут друг под другом */
-    gap: 15px; /* Пространство между секциями */
+    flex-basis: 57%;
+    min-width: 400px;
+    display: flex;
+    flex-direction: column;
+    gap: 25px; /* Уменьшим */
+    background-color: transparent;
 }
 
-/* Общие стили для секций внутри правой панели */
 .output-section {
     display: flex;
     flex-direction: column;
-    /* flex-grow: 1; Убрали, т.к. высота будет разной */
-    min-height: 0; /* Важно для flex-shrink */
-    /* margin-bottom: 15px; Заменено на gap в output-panel */
+    min-height: 0;
+    background-color: transparent;
 }
-/* Убрали :last-child margin-bottom */
-
 
 .panel h2 {
-    margin-top: 0;
-    margin-bottom: 10px;
-    font-size: 1.1em;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 5px;
+    margin: 0 0 18px 0; /* Вернем отступ */
+    font-size: 1.2em; /* Вернем */
+    font-weight: 600;
+    border-bottom: 1px solid transparent;
+    background: linear-gradient(to right, var(--accent-gold), var(--bg-dark));
+    background-repeat: no-repeat;
+    background-size: 40% 1px; /* Короче линия */
+    background-position: left bottom;
+    padding-bottom: 10px; /* Вернем */
     display: flex;
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    flex-shrink: 0; /* Заголовок не должен сжиматься */
+    flex-shrink: 0;
+    color: var(--text-primary);
+}
+.panel h2 #selected-files-count {
+    color: var(--accent-gold);
+    font-weight: bold;
+    margin: 0 5px;
+    font-size: 0.9em;
 }
 
-/* Стили для элементов управления деревом */
+/* --- Элементы управления деревом --- */
 .tree-controls {
     display: flex;
-    gap: 5px;
-    margin-bottom: 10px;
-    padding: 5px;
-    background-color: #f0f0f0;
-    border-radius: 3px;
+    gap: 10px; /* Уменьшим */
+    margin-bottom: 15px; /* Уменьшим */
+    padding: 10px; /* Уменьшим */
+    background-color: rgba(0,0,0, 0.15);
+    border: 1px solid var(--border-color);
+    border-radius: 6px; /* Уменьшим */
     flex-wrap: wrap;
 }
 
 #search-input {
     flex-grow: 1;
-    padding: 4px 8px;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    font-size: 0.9em;
-    min-width: 100px;
+    padding: 8px 12px; /* Вернем */
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 1em;
+    min-width: 160px;
+    background-color: var(--bg-medium);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
 }
+#search-input:focus {
+    border-color: var(--border-highlight);
+    box-shadow: 0 0 0 3px var(--accent-gold-glow);
+}
+#search-input::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.6;
+}
+
+#search-input::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 16px;
+    width: 16px;
+    margin-left: 4px;
+    cursor: pointer;
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="white"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>');
+    filter: grayscale(1) brightness(3) /* Почти белый */
+            sepia(1) hue-rotate(5deg) saturate(500%); /* Золотой */
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+#search-input::-webkit-search-cancel-button:hover {
+    opacity: 1;
+}
+
 
 .tree-controls button {
-    padding: 4px 8px;
-    font-size: 0.85em;
-    background-color: #e0e0e0;
-}
-.tree-controls button:hover:not(:disabled) {
-    background-color: #d0d0d0;
+    padding: 7px 14px;
+    font-size: 0.9em;
 }
 
 
+/* --- Дерево файлов --- */
 #file-tree-container {
     flex-grow: 1;
     overflow-y: auto;
-    font-size: 0.9em;
-    border: 1px solid #eee;
-    padding: 5px;
+    font-size: 1em;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(to bottom, var(--bg-dark) 0%, var(--bg-darker) 100%);
+    padding: 15px 8px 15px 15px;
+    border-radius: 8px;
 }
 
-/* Стили для дерева файлов */
 #file-tree-container ul {
     list-style-type: none;
-    padding-left: 20px;
+    padding-left: 28px;
     margin: 0;
 }
 #file-tree-container ul.collapsed {
@@ -162,22 +355,32 @@ header h1 {
 }
 
 #file-tree-container li {
-    margin: 1px 0;
-    padding: 1px 3px;
+    margin: 4px 0;
+    padding: 4px 6px;
     white-space: nowrap;
-    border-radius: 2px;
-    transition: background-color 0.2s ease;
+    border-radius: 5px;
+    transition: background-color 0.15s ease, border-left-color 0.15s ease;
+    border-left: 4px solid transparent;
 }
+
+#file-tree-container li:has(> label.is-directory) {
+    background-color: var(--bg-folder-item);
+}
+
+#file-tree-container li:hover {
+    background-color: var(--bg-hover-item);
+    border-left-color: var(--bg-light);
+}
+
 
 #file-tree-container li.hidden-node {
     display: none;
 }
 
-#file-tree-container li.search-match > label {
-    box-shadow: inset 0 0 0 2px #ffd700;
-    background-color: transparent;
+#file-tree-container li.search-match {
+    background-color: var(--accent-gold-transparent);
+    border-left-color: var(--accent-gold);
 }
-
 
 #file-tree-container label {
     cursor: pointer;
@@ -185,13 +388,19 @@ header h1 {
     align-items: center;
     position: relative;
     width: 100%;
-    padding: 1px 0;
+    padding: 3px 0;
 }
 
 #file-tree-container input[type="checkbox"] {
-    margin-right: 5px;
+    margin-right: 12px;
     flex-shrink: 0;
+    accent-color: var(--accent-gold);
+    cursor: pointer;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
 }
+
 
 .item-label span.node-name {
     overflow: hidden;
@@ -199,170 +408,246 @@ header h1 {
     white-space: nowrap;
     display: inline-block;
     vertical-align: middle;
+    margin-left: 5px;
+    line-height: 1.4;
+}
+
+.item-label.is-directory span.node-name {
+    font-weight: 600;
+    color: var(--text-folder);
+}
+.item-label:not(.is-directory) span.node-name {
+    color: var(--text-file);
 }
 
 .item-label::before {
     content: '';
     display: inline-block;
-    width: 1em;
-    height: 1em;
-    margin-right: 4px;
+    width: 1.3em;
+    height: 1.3em;
+    margin-right: 10px;
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
     vertical-align: middle;
     flex-shrink: 0;
+    opacity: 0.9;
+    filter: invert(95%) sepia(5%) saturate(50%) hue-rotate(190deg) brightness(110%) contrast(95%);
 }
 
 .item-label.is-directory::before {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M.577 3.25a.75.75 0 0 1 .5-.75h4.44l1.25-1.5a.75.75 0 0 1 .6-.3h5.133a.75.75 0 0 1 .75.75v1.196l.001.001a1.75 1.75 0 0 1 1.699 1.71l-.006 7.039a1.75 1.75 0 0 1-1.75 1.75H2.25a1.75 1.75 0 0 1-1.75-1.75V3.25Zm7.5 1a.75.75 0 0 0-.75.75v.25h7.147A.25.25 0 0 0 15 5V3.25a.25.25 0 0 0-.25-.25H8.077Z"/></svg>');
+    filter: invert(90%) sepia(15%) saturate(150%) hue-rotate(190deg) brightness(115%) contrast(95%);
+    opacity: 1;
 }
 .item-label:not(.is-directory)::before {
      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.75 1.5a.25.25 0 0 0-.25.25v11.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V6.19l-4.44-4.44H3.75Zm8.5 5.44V13.5h-8.5V1.75h4.19v4.19c0 .138.112.25.25.25h4.06Z"/></svg>');
-}
-
-.item-label.is-ignored {
-    color: #888;
-    font-style: italic;
-}
-.item-label.is-ignored::before {
-    opacity: 0.6;
-}
-#file-tree-container li:has(> label.is-ignored) {
-     background-color: #f8f8f8;
-}
-
-
-.item-label.has-error {
-     color: #d32f2f;
+     opacity: 0.8;
 }
 .item-label.has-error::before {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path fill-rule="evenodd" d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13ZM0 8a8 8 0 1 1 16 0A8 8 0 0 1 0 8Zm11.354 2.646a.5.5 0 0 1 0 .708l-.708.707a.5.5 0 0 1-.707 0L8 9.707l-1.94 1.94a.5.5 0 0 1-.707 0l-.708-.707a.5.5 0 0 1 0-.708L6.293 9 4.354 7.06a.5.5 0 0 1 0-.707l.707-.707a.5.5 0 0 1 .707 0L8 7.586l1.94-1.94a.5.5 0 0 1 .707 0l.708.707a.5.5 0 0 1 0 .707L9.707 9l1.647 1.646Z" clip-rule="evenodd"/></svg>');
-}
-#file-tree-container li:has(> label.has-error) {
-     background-color: #ffebee;
+     filter: none;
+     opacity: 1;
 }
 
-/* --- ВОЗВРАЩЕНЫ СТИЛИ для структуры --- */
+.item-label.is-ignored {
+    color: var(--text-tertiary);
+    font-style: italic;
+    opacity: 0.7;
+}
+.item-label.is-ignored::before {
+    opacity: 0.5;
+}
+
+.item-label.has-error {
+     color: var(--error-color);
+}
+#file-tree-container li:has(> label.has-error) {
+     background-color: var(--error-bg);
+     border-left-color: var(--error-border);
+}
+
+/* --- Секция структуры --- */
 .structure-section {
-    /* Можно добавить специфичные стили, но пока наследуем от .output-section */
-    /* ПРОГНОЗ: Зададим высоту и возможность изменения размера */
-    flex-shrink: 0; /* Секция структуры не должна сильно сжиматься */
-    /* Можно задать начальную высоту, например: */
-    /* height: 200px; */
+    flex-shrink: 0;
+    height: 300px;
+    max-height: 50%;
+    display: flex;
+    flex-direction: column;
+    background-color: transparent;
+    overflow: hidden;
 }
 
 .structure-section textarea {
-    width: calc(100% - 10px); /* Учитываем padding/border */
-    min-height: 100px; /* Минимальная высота */
-    flex-grow: 1; /* Растягиваем по доступной высоте секции */
-    margin-bottom: 10px;
-    font-family: "Courier New", Courier, monospace;
-    font-size: 0.85em;
-    border: 1px solid #ccc;
-    padding: 5px;
-    resize: vertical; /* Позволяем изменять высоту */
+    width: 100%;
+    flex-grow: 1;
+    margin-bottom: 15px;
+    font-family: "Fira Code", "Consolas", "Menlo", "Courier New", monospace;
+    font-size: 0.9em;
+    line-height: 1.6;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 15px;
+    resize: vertical;
+    background: linear-gradient(to bottom, var(--bg-dark), var(--bg-darker));
+    color: var(--text-primary);
+    outline: none;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
+}
+.structure-section textarea::placeholder {
+     color: var(--text-secondary);
+     opacity: 0.6;
 }
 
-/* --- СТИЛИ для области перетаскивания --- */
+/* --- Секция перетаскивания --- */
 .draggable-section {
-    flex-grow: 1; /* Эта секция будет занимать оставшееся место */
-    /* min-height уже 0 от .output-section */
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 200px;
+    overflow: hidden;
 }
 
 #draggable-files-container {
-    flex-grow: 1; /* Занимает доступное место внутри draggable-section */
-    border: 1px solid #eee;
-    padding: 10px;
+    flex-grow: 1;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
-    gap: 5px;
-    background-color: #fdfdfd; /* Чуть другой фон для визуального отличия */
+    gap: 10px;
+    background: linear-gradient(to bottom, var(--bg-dark), var(--bg-darker));
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.4);
 }
 
 #draggable-files-container .placeholder-text {
-    color: #888;
+    color: var(--text-secondary);
     font-style: italic;
     text-align: center;
     margin: auto;
+    font-size: 1em;
 }
 
 .draggable-file-item {
-    padding: 8px 12px;
-    background-color: #f0f0f0; /* Сделаем чуть темнее фона контейнера */
-    border: 1px solid #ddd;
-    border-radius: 4px;
+    padding: 12px 16px;
+    background: linear-gradient(to right, var(--bg-medium), var(--bg-dark));
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
     cursor: grab;
     user-select: none;
     display: flex;
     align-items: center;
-    gap: 8px;
-    font-size: 0.9em;
+    gap: 14px;
+    font-size: 1em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-primary);
+    transition: all 0.15s ease;
+    box-shadow: 0 2px 3px rgba(0,0,0, 0.2);
+}
+.draggable-file-item:hover {
+     background: linear-gradient(to right, var(--bg-light), #4a505f);
+     border-color: #7c8599;
+     box-shadow: 0 3px 6px rgba(0,0,0, 0.25);
+     transform: translateY(-1px);
 }
 
 .draggable-file-item:active {
     cursor: grabbing;
-    background-color: #e0e0e0;
+    background: linear-gradient(to right, var(--bg-light), #4a505f);
+    border-color: var(--accent-gold);
+    box-shadow: inset 0 1px 3px rgba(0,0,0, 0.2);
+    transform: translateY(0px);
 }
 
 .draggable-file-item::before {
     content: '';
     display: inline-block;
-    width: 1em;
-    height: 1em;
+    width: 1.3em;
+    height: 1.3em;
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M3.75 1.5a.25.25 0 0 0-.25.25v11.5c0 .138.112.25.25.25h8.5a.25.25 0 0 0 .25-.25V6.19l-4.44-4.44H3.75Zm8.5 5.44V13.5h-8.5V1.75h4.19v4.19c0 .138.112.25.25.25h4.06Z"/></svg>');
     background-repeat: no-repeat;
     background-position: center center;
     background-size: contain;
     vertical-align: middle;
     flex-shrink: 0;
-    opacity: 0.8;
+    opacity: 0.9;
+    filter: invert(95%) sepia(5%) saturate(50%) hue-rotate(190deg) brightness(110%) contrast(95%);
 }
 
-/* Общие стили кнопок */
+/* --- Общие стили кнопок --- */
 button {
-    padding: 8px 15px;
+    padding: 10px 22px;
     cursor: pointer;
-    border: 1px solid #ccc;
-    background-color: #e7e7e7;
-    border-radius: 3px;
-    transition: background-color 0.2s ease;
+    border: 1px solid var(--border-color);
+    background: linear-gradient(to bottom, #5f677a 0%, var(--bg-medium) 100%);
+    color: var(--text-primary);
+    border-radius: 6px;
+    transition: all 0.2s ease;
     white-space: nowrap;
-    flex-shrink: 0; /* Кнопки не должны сжиматься */
+    flex-shrink: 0;
+    font-weight: 600;
+    font-size: 0.95em;
+    letter-spacing: 0.5px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.25), inset 0 1px 0 rgba(255,255,255, 0.08);
+    outline: none;
 }
 
 button:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.4;
+    box-shadow: none;
+    background: var(--bg-medium);
 }
 
 button:hover:not(:disabled) {
-    background-color: #ddd;
+    background: linear-gradient(to bottom, #747c90 0%, #5f677a 100%);
+    border-color: #8c96af;
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255, 0.1);
+}
+button:active:not(:disabled) {
+    background: linear-gradient(to top, #747c90 0%, #5f677a 100%);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+    transform: translateY(1px);
 }
 
-/* Стили для индикаторов загрузки (оставлен только общий .loading-indicator) */
+#copy-structure-btn:not(:disabled) {
+     background: linear-gradient(to bottom, var(--accent-gradient-end) 0%, var(--accent-gradient-start) 100%);
+     border-color: #a07e2d;
+     color: #111;
+     text-shadow: 0 1px 0 rgba(255,255,255,0.2);
+}
+#copy-structure-btn:hover:not(:disabled) {
+    background: linear-gradient(to bottom, var(--accent-gold-hover) 0%, var(--accent-gradient-end) 100%);
+    border-color: var(--accent-gradient-start);
+    box-shadow: 0 3px 7px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255,255,255, 0.2), 0 0 8px var(--accent-gold-glow);
+}
+#copy-structure-btn:active:not(:disabled) {
+    background: linear-gradient(to top, var(--accent-gold-hover) 0%, var(--accent-gradient-end) 100%);
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* --- Индикатор загрузки --- */
 .loading-indicator {
-    font-size: 0.85em;
-    color: #333;
+    font-size: 0.9em;
+    color: var(--text-secondary);
     display: inline-flex;
     align-items: center;
 }
 
-.loading-indicator::before { /* Простой CSS спиннер */
+.loading-indicator::before {
     content: "";
     display: inline-block;
-    width: 1em;
-    height: 1em;
-    margin-right: 5px;
-    border: 2px solid #f3f3f3;
-    border-top: 2px solid #555;
+    width: 1.3em;
+    height: 1.3em;
+    margin-right: 10px;
+    border: 4px solid var(--bg-light);
+    border-top-color: var(--accent-gold);
     border-radius: 50%;
-    animation: spin 1s linear infinite;
-    flex-shrink: 0; /* Спиннер не должен сжиматься */
+    animation: spin 0.6s linear infinite;
+    flex-shrink: 0;
 }
 
 @keyframes spin {
@@ -370,28 +655,55 @@ button:hover:not(:disabled) {
     100% { transform: rotate(360deg); }
 }
 
-/* Стили для оверлея Drag & Drop папки (если вдруг понадобится) */
-#drag-overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: rgba(0, 0, 0, 0.6);
-    color: white;
-    display: none; /* Скрыт по умолчанию */
-    justify-content: center;
-    align-items: center;
-    font-size: 1.5em;
-    text-align: center;
-    z-index: 10;
-    pointer-events: none;
-    border: 3px dashed #fff;
-    border-radius: 5px;
+/* --- Стилизация скроллбаров --- */
+::-webkit-scrollbar {
+  width: 13px;
+  height: 13px;
 }
 
-#drag-overlay p {
-    padding: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    border-radius: 5px;
+::-webkit-scrollbar-track {
+  background: var(--bg-darker);
+  border-radius: 7px;
+  border: 1px solid var(--bg-darkest);
 }
+
+::-webkit-scrollbar-thumb {
+  background-color: var(--bg-light);
+  border-radius: 7px;
+  border: 3px solid var(--bg-darker);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: #767f95;
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: var(--accent-gold);
+}
+
+#structure-output::-webkit-scrollbar-track {
+    background-color: var(--bg-dark);
+    border-radius: 0 6px 6px 0;
+    border: none;
+}
+#structure-output::-webkit-scrollbar-thumb {
+    background-color: var(--bg-medium);
+    border: 3px solid var(--bg-dark);
+}
+#structure-output::-webkit-scrollbar-thumb:hover {
+     background-color: var(--bg-light);
+}
+#structure-output::-webkit-scrollbar-thumb:active {
+     background-color: var(--accent-gold);
+}
+
+#structure-output::-webkit-scrollbar-corner {
+    background-color: var(--bg-dark);
+}
+
+::-webkit-scrollbar-corner {
+    background-color: var(--bg-darker);
+}
+
+
+/* --- Остальные стили без изменений --- */
+#drag-overlay { /* ... */ }
+#drag-overlay p { /* ... */ }

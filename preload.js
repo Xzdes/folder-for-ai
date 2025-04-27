@@ -1,9 +1,6 @@
 // preload.js
 const { contextBridge, ipcRenderer } = require('electron');
 
-// --- Канал для отмены удален ---
-// const CANCEL_CONTENT_LOAD_CHANNEL = 'cancel-file-content';
-
 // Проверяем, что код выполняется в изолированном контексте
 if (process.contextIsolated) {
     try {
@@ -27,27 +24,26 @@ if (process.contextIsolated) {
                  }
             },
 
-            // 3. Запросить содержимое выбранных файлов (УДАЛЕНО)
-            // getFileContent: (filePaths) => { ... },
-
-            // 4. Отправить сигнал отмены в main.js (УДАЛЕНО)
-            // cancelFileContentLoad: () => { ... },
-
-            // 5. НОВАЯ функция для инициации перетаскивания файлов
+            // 3. Инициировать перетаскивание файлов
             startDrag: (filePaths) => {
                  if (Array.isArray(filePaths) && filePaths.length > 0) {
                      console.log(`Preload: Sending "start-drag" event for ${filePaths.length} files.`);
-                     // Используем ipcRenderer.send, так как нам не нужен ответ,
-                     // а нужно просто инициировать действие в main процессе.
                      ipcRenderer.send('start-drag', filePaths);
                  } else {
                      console.warn('Preload: Invalid or empty filePaths passed to startDrag.');
                  }
             },
 
-            // 6. Копирование в буфер обмена (оставлено для примера, но НЕ ИСПОЛЬЗУЕТСЯ в новой логике)
-            // УДАЛЕНО, так как не используется и не относится к текущей задаче.
-            // copyToClipboard: (text) => { ... },
+            // 4. НОВАЯ функция для закрытия окна
+            windowClose: () => {
+                console.log('Preload: Sending "window-close" event.');
+                ipcRenderer.send('window-close');
+            },
+
+            // Сюда можно будет добавить windowMinimize, windowMaximize
+            // windowMinimize: () => { ipcRenderer.send('window-minimize'); },
+            // windowMaximize: () => { ipcRenderer.send('window-maximize'); },
+
         });
         console.log('Preload: electronAPI exposed successfully.');
     } catch (error) {
