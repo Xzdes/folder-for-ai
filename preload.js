@@ -41,8 +41,14 @@ if (process.contextIsolated) {
             },
 
             // Сюда можно будет добавить windowMinimize, windowMaximize
-            // windowMinimize: () => { ipcRenderer.send('window-minimize'); },
-            // windowMaximize: () => { ipcRenderer.send('window-maximize'); },
+            windowMinimize: () => { 
+                console.log('Preload: Sending "window-minimize" event.');
+                ipcRenderer.send('window-minimize'); 
+            },
+            windowMaximize: () => { 
+                console.log('Preload: Sending "window-maximize" event.');
+                ipcRenderer.send('window-maximize'); 
+            },
 
         });
         console.log('Preload: electronAPI exposed successfully.');

@@ -4,6 +4,7 @@ const selectFolderBtn = document.getElementById('select-folder-btn');
 const statusBar = document.getElementById('status-bar');
 const fileTreeContainer = document.getElementById('file-tree-container');
 const searchInput = document.getElementById('search-input');
+const typeFilterInput = document.getElementById('type-filter-input'); // Новая ссылка
 const expandAllBtn = document.getElementById('expand-all-btn');
 const collapseAllBtn = document.getElementById('collapse-all-btn');
 const scanIndicator = document.getElementById('scan-indicator');
@@ -12,8 +13,11 @@ const structureOutput = document.getElementById('structure-output');
 const copyStructureBtn = document.getElementById('copy-structure-btn');
 const draggableFilesContainer = document.getElementById('draggable-files-container');
 const selectedFilesCountSpan = document.getElementById('selected-files-count');
+const themeToggleBtn = document.getElementById('theme-toggle-btn');
 // НОВАЯ ССЫЛКА на кнопку закрытия
 const windowCloseBtn = document.getElementById('window-close-btn');
+const windowMinBtn = document.getElementById('window-min-btn'); // НОВАЯ ССЫЛКА
+const windowMaxBtn = document.getElementById('window-max-btn'); // НОВАЯ ССЫЛКА
 
 // --- Глобальные переменные состояния ---
 let currentRootPath = null;
@@ -24,6 +28,7 @@ const LAST_FOLDER_KEY = 'lastSelectedFolderPath';
 document.addEventListener('DOMContentLoaded', () => {
     displayLastFolderPath();
     resetUI();
+    initializeTheme(); // Инициализация темы
 });
 
 
@@ -67,7 +72,16 @@ let searchTimeout;
 searchInput.addEventListener('input', () => {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
-        filterTree(searchInput.value);
+        filterTree(searchInput.value, typeFilterInput.value); // Обновляем вызов filterTree
+    }, 300);
+});
+
+// Новый обработчик для фильтра по типу
+let typeFilterTimeout;
+typeFilterInput.addEventListener('input', () => {
+    clearTimeout(typeFilterTimeout);
+    typeFilterTimeout = setTimeout(() => {
+        filterTree(searchInput.value, typeFilterInput.value); // Обновляем вызов filterTree
     }, 300);
 });
 
@@ -105,6 +119,57 @@ if (windowCloseBtn) {
     });
 }
 
+// НОВЫЕ Обработчики для кнопок Свернуть и Развернуть/Восстановить
+if (windowMinBtn) {
+    windowMinBtn.addEventListener('click', () => {
+        console.log('Renderer: Minimize button clicked.');
+        window.electronAPI.windowMinimize();
+    });
+}
+
+if (windowMaxBtn) {
+    windowMaxBtn.addEventListener('click', () => {
+        console.log('Renderer: Maximize/Restore button clicked.');
+        window.electronAPI.windowMaximize();
+    });
+}
+
+
+// 8. НОВЫЙ Обработчик клика по кнопке Сменить тему
+if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+        toggleTheme();
+    });
+}
+
+// --- Функции для управления темой ---
+const THEME_KEY = 'selectedTheme';
+
+function initializeTheme() {
+    const savedTheme = localStorage.getItem(THEME_KEY);
+    if (savedTheme) {
+        applyTheme(savedTheme);
+    } else {
+        // Если тема не сохранена, проверяем системные предпочтения
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        applyTheme(prefersDark ? 'dark' : 'light');
+    }
+}
+
+function applyTheme(themeName) {
+    document.documentElement.setAttribute('data-theme', themeName);
+    localStorage.setItem(THEME_KEY, themeName);
+    console.log(`Renderer: Theme applied: ${themeName}`);
+    if (themeToggleBtn) {
+        themeToggleBtn.textContent = themeName === 'dark' ? 'Светлая тема' : 'Темная тема';
+    }
+}
+
+function toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+    applyTheme(newTheme);
+}
 
 // --- Основные функции ---
 
@@ -127,6 +192,7 @@ async function handleFolderSelected(folderPath, treeData) {
     copyStructureBtn.disabled = !structureText;
 
     updateDraggableFilesArea();
+    filterTree(searchInput.value, typeFilterInput.value); // Применяем фильтры после рендеринга
 }
 
 
@@ -141,6 +207,7 @@ function resetUI(clearStatus = true) {
 
     fileTreeContainer.innerHTML = '<p>Нажмите "Выбрать корневую папку...", чтобы начать.</p>';
     searchInput.value = '';
+    typeFilterInput.value = ''; // Сбрасываем фильтр по типу
 
     structureOutput.value = '';
     structureOutput.placeholder = 'Структура папки появится здесь...';
@@ -164,7 +231,11 @@ function setScanIndicator(isLoading) {
 
 // ИТЕРАТИВНАЯ функция для отрисовки дерева файлов (без изменений)
 function renderFileTreeIterative(rootNode, containerElement) {
-    containerElement.innerHTML = ''; if (!rootNode || !rootNode.name) { containerElement.innerHTML = '<p>Не удалось загрузить структуру папки.</p>'; console.error("Invalid root node provided:", rootNode); return; } const stack = []; const initialUl = document.createElement('ul'); containerElement.appendChild(initialUl); if (rootNode.children && rootNode.children.length > 0) { for (let i = rootNode.children.length - 1; i >= 0; i--) { stack.push({ node: rootNode.children[i], parentElement: initialUl, level: 0 }); } } else { containerElement.innerHTML = '<p>Папка пуста или недоступна.</p>'; return; } while (stack.length > 0) { const { node, parentElement, level } = stack.pop(); const li = document.createElement('li'); li.dataset.path = node.path; const label = document.createElement('label'); label.classList.add('item-label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.path = node.path; checkbox.dataset.isDirectory = node.isDirectory; checkbox.checked = false; checkbox.disabled = node.ignored || !!node.error; if (node.isDirectory) label.classList.add('is-directory'); if (node.ignored) label.classList.add('is-ignored'); if (node.error) label.classList.add('has-error'); if (node.error) { label.title = `Ошибка доступа: ${node.error}`; } else if (node.ignored) { label.title = `Игнорируется по умолчанию`; } else { label.title = node.relativePath || node.name; } label.appendChild(checkbox); const nameSpan = document.createElement('span'); nameSpan.classList.add('node-name'); nameSpan.textContent = ` ${node.name}`; label.appendChild(nameSpan); li.appendChild(label); parentElement.appendChild(li); if (node.isDirectory && node.children && node.children.length > 0 && !node.ignored && !node.error) { const childUl = document.createElement('ul'); li.appendChild(childUl); for (let i = node.children.length - 1; i >= 0; i--) { stack.push({ node: node.children[i], parentElement: childUl, level: level + 1 }); } } } if (searchInput.value) { filterTree(searchInput.value); }
+    containerElement.innerHTML = ''; if (!rootNode || !rootNode.name) { containerElement.innerHTML = '<p>Не удалось загрузить структуру папки.</p>'; console.error("Invalid root node provided:", rootNode); return; } const stack = []; const initialUl = document.createElement('ul'); containerElement.appendChild(initialUl); if (rootNode.children && rootNode.children.length > 0) { for (let i = rootNode.children.length - 1; i >= 0; i--) { stack.push({ node: rootNode.children[i], parentElement: initialUl, level: 0 }); } } else { containerElement.innerHTML = '<p>Папка пуста или недоступна.</p>'; return; } while (stack.length > 0) { const { node, parentElement, level } = stack.pop(); const li = document.createElement('li'); li.dataset.path = node.path; const label = document.createElement('label'); label.classList.add('item-label'); const checkbox = document.createElement('input'); checkbox.type = 'checkbox'; checkbox.dataset.path = node.path; checkbox.dataset.isDirectory = node.isDirectory; checkbox.checked = false; checkbox.disabled = node.ignored || !!node.error; if (node.isDirectory) label.classList.add('is-directory'); if (node.ignored) label.classList.add('is-ignored'); if (node.error) label.classList.add('has-error'); if (node.error) { label.title = `Ошибка доступа: ${node.error}`; } else if (node.ignored) { label.title = `Игнорируется по умолчанию`; } else { label.title = node.relativePath || node.name; } label.appendChild(checkbox); const nameSpan = document.createElement('span'); nameSpan.classList.add('node-name'); nameSpan.textContent = ` ${node.name}`; label.appendChild(nameSpan); li.appendChild(label); parentElement.appendChild(li); if (node.isDirectory && node.children && node.children.length > 0 && !node.ignored && !node.error) { const childUl = document.createElement('ul'); li.appendChild(childUl); for (let i = node.children.length - 1; i >= 0; i--) { stack.push({ node: node.children[i], parentElement: childUl, level: level + 1 }); } } } 
+    // Применяем фильтры после первоначального рендеринга, если они есть
+    if (searchInput.value || typeFilterInput.value) {
+        filterTree(searchInput.value, typeFilterInput.value);
+    }
 }
 
 // Обработчик изменения состояния чекбокса
@@ -301,7 +372,61 @@ async function copyToClipboard(text, buttonElement, successMessage) {
 
 
 // --- Функции для работы с деревом и localStorage (без изменений) ---
-function filterTree(searchTerm) { const term = searchTerm.toLowerCase().trim(); const allNodes = fileTreeContainer.querySelectorAll('li'); if (!term) { allNodes.forEach(li => { li.classList.remove('hidden-node'); const label = li.querySelector(':scope > label'); if (label) label.classList.remove('search-match'); }); toggleAllNodes(true); return; } allNodes.forEach(li => { const label = li.querySelector(':scope > label'); const nameSpan = label ? label.querySelector('.node-name') : null; const nodeName = nameSpan ? nameSpan.textContent.toLowerCase().trim() : ''; const isMatch = nodeName.includes(term); li.classList.add('hidden-node'); if (label) label.classList.remove('search-match'); if (isMatch) { li.classList.remove('hidden-node'); if (label) label.classList.add('search-match'); let parentLi = li.parentElement.closest('li'); while (parentLi) { parentLi.classList.remove('hidden-node'); const parentUl = parentLi.querySelector(':scope > ul'); if (parentUl) parentUl.classList.remove('collapsed'); parentLi = parentLi.parentElement.closest('li'); } const ownUl = li.querySelector(':scope > ul'); if (ownUl) ownUl.classList.remove('collapsed'); } }); }
+function filterTree(searchTerm, typeTerm) { 
+    const term = searchTerm.toLowerCase().trim();
+    const type = typeTerm.toLowerCase().trim();
+    const allNodes = fileTreeContainer.querySelectorAll('li'); 
+
+    if (!term && !type) { 
+        allNodes.forEach(li => { 
+            li.classList.remove('hidden-node'); 
+            const label = li.querySelector(':scope > label'); 
+            if (label) label.classList.remove('search-match'); 
+        }); 
+        toggleAllNodes(true); 
+        return; 
+    } 
+
+    allNodes.forEach(li => { 
+        const label = li.querySelector(':scope > label'); 
+        const nameSpan = label ? label.querySelector('.node-name') : null; 
+        const nodeName = nameSpan ? nameSpan.textContent.toLowerCase().trim() : ''; 
+        const isDirectory = li.querySelector('input[type="checkbox"]')?.dataset.isDirectory === 'true';
+
+        let nameMatch = true;
+        if (term) {
+            nameMatch = nodeName.includes(term);
+        }
+
+        let typeMatch = true;
+        if (type && !isDirectory) { // Фильтр по типу применяется только к файлам
+            // Убедимся, что тип начинается с точки, если пользователь ее не ввел
+            const normalizedType = type.startsWith('.') ? type : '.' + type;
+            typeMatch = nodeName.endsWith(normalizedType);
+        } else if (type && isDirectory) {
+            typeMatch = true; // Для директорий фильтр по типу не скрывает их, если имя совпадает
+        }
+
+        const isMatch = nameMatch && typeMatch;
+
+        li.classList.add('hidden-node'); 
+        if (label) label.classList.remove('search-match'); 
+
+        if (isMatch) { 
+            li.classList.remove('hidden-node'); 
+            if (label && term) label.classList.add('search-match'); // Подсветка только для совпадения по имени
+            let parentLi = li.parentElement.closest('li'); 
+            while (parentLi) { 
+                parentLi.classList.remove('hidden-node'); 
+                const parentUl = parentLi.querySelector(':scope > ul'); 
+                if (parentUl) parentUl.classList.remove('collapsed'); 
+                parentLi = parentLi.parentElement.closest('li'); 
+            } 
+            const ownUl = li.querySelector(':scope > ul'); 
+            if (ownUl) ownUl.classList.remove('collapsed'); 
+        } 
+    }); 
+}
 function toggleAllNodes(expand) { const allUls = fileTreeContainer.querySelectorAll('ul > li > ul'); allUls.forEach(ul => { if (expand) { ul.classList.remove('collapsed'); } else { ul.classList.add('collapsed'); } }); }
 function saveLastFolderPath(path) { if (path) { try { localStorage.setItem(LAST_FOLDER_KEY, path); } catch (e) { console.warn("Не удалось сохранить путь в localStorage:", e); } } }
 function displayLastFolderPath() { try { const lastPath = localStorage.getItem(LAST_FOLDER_KEY); lastFolderInfoSpan.innerHTML = ''; if (lastPath) { const textSpan = document.createElement('span'); textSpan.textContent = `Последняя папка: `; lastFolderInfoSpan.appendChild(textSpan); const pathSpan = document.createElement('span'); pathSpan.title = lastPath; pathSpan.textContent = truncatePath(lastPath); lastFolderInfoSpan.appendChild(pathSpan); const loadBtn = document.createElement('button'); loadBtn.textContent = 'Загрузить'; loadBtn.title = `Загрузить ${lastPath}`; loadBtn.style.marginLeft = '5px'; loadBtn.onclick = async () => { statusBar.textContent = `Загрузка папки: ${lastPath}...`; setScanIndicator(true); resetUI(false); try { const result = await window.electronAPI.scanFolderPath(lastPath); if (result.success) { await handleFolderSelected(result.path, result.tree); } else { statusBar.textContent = `Ошибка загрузки папки: ${result.error || 'Неизвестная ошибка'}`; const removeInvalid = confirm(`Папку "${lastPath}" не удалось загрузить. Удалить её из истории последних папок?`); if (removeInvalid) { localStorage.removeItem(LAST_FOLDER_KEY); displayLastFolderPath(); } resetUI(); } } catch(error) { console.error("Error loading last folder:", error); statusBar.textContent = `Критическая ошибка загрузки папки: ${error.message}`; resetUI(); } finally { setScanIndicator(false); } }; lastFolderInfoSpan.appendChild(loadBtn); } } catch (e) { console.warn("Не удалось получить путь из localStorage:", e); lastFolderInfoSpan.innerHTML = ''; } }

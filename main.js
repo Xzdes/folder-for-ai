@@ -144,17 +144,27 @@ ipcMain.on('window-close', () => {
     }
 });
 
-// Сюда можно добавить обработчики для 'window-minimize', 'window-maximize'
-// ipcMain.on('window-minimize', () => { if (mainWindow) mainWindow.minimize(); });
-// ipcMain.on('window-maximize', () => {
-//     if (mainWindow) {
-//         if (mainWindow.isMaximized()) {
-//             mainWindow.unmaximize();
-//         } else {
-//             mainWindow.maximize();
-//         }
-//     }
-// });
+// Обработчик для сворачивания окна
+ipcMain.on('window-minimize', () => {
+    console.log('IPC: Received window-minimize request.');
+    if (mainWindow) {
+        mainWindow.minimize();
+    }
+});
+
+// Обработчик для разворачивания/восстановления окна
+ipcMain.on('window-maximize', () => {
+    console.log('IPC: Received window-maximize request.');
+    if (mainWindow) {
+        if (mainWindow.isMaximized()) {
+            mainWindow.unmaximize();
+            console.log('IPC: Window unmaximized.');
+        } else {
+            mainWindow.maximize();
+            console.log('IPC: Window maximized.');
+        }
+    }
+});
 
 console.log("<<<<< Main Process: Window control listeners are set up. >>>>>");
 

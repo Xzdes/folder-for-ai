@@ -2,39 +2,73 @@
 
 /* --- Цветовая палитра --- */
 :root {
-    --bg-darkest: #14161a;
-    --bg-darker: #1c1f26;
-    --bg-dark: #252931;
-    --bg-medium: #353a45;
-    --bg-light: #5a6172;
-    --bg-hover-item: rgba(255, 255, 255, 0.07);
-    --bg-folder-item: rgba(255, 255, 255, 0.03);
+    /* Light Theme (default) */
+    --bg-darkest: #f0f0f0; /* Main background */
+    --bg-dark: #f8f8f8;    /* Panel backgrounds, slightly lighter */
+    --bg-medium: #ffffff;  /* Input backgrounds, buttons */
+    --bg-light: #e0e0e0;   /* Hover states, accents */
+    --bg-folder-item: #f0f4f8;
+    --bg-darker: #e9e9e9; /* Gradient end for file tree */
 
-    --text-primary: #e8eaf0;
-    --text-secondary: #b0b8d0;
-    --text-tertiary: #808aa0;
-    --text-folder: #f0f2f8;
-    --text-file: #cdd3e0;
+    --text-primary: #2c3e50; /* Main text */
+    --text-secondary: #555f6e; /* Placeholder text, secondary info */
+    --text-highlight: #007acc; /* Highlighted text, links */
+    --text-error: #e74c3c;
 
-    --border-color: #454a5a;
-    --border-highlight: #e8c06a;
-    --border-gradient-start: rgba(100, 108, 128, 0.6);
-    --border-gradient-end: rgba(100, 108, 128, 0.1);
+    --border-color: #cccccc;       /* Borders */
+    --border-highlight: #007acc; /* Focused input borders */
 
+    --accent-gold: #007acc;         /* Primary accent (was gold, now blue for light) */
+    --accent-gold-glow: rgba(0, 122, 204, 0.25);
+    --accent-secondary: #27ae60; /* Secondary accent (green) */
 
-    --accent-gold: #e8c06a;
-    --accent-gold-hover: #f8d888;
-    --accent-gold-transparent: rgba(232, 192, 106, 0.18);
-    --accent-gold-glow: rgba(232, 192, 106, 0.35);
-    --accent-gradient-start: #ab8b40;
-    --accent-gradient-end: #e8c06a;
+    --scrollbar-thumb: #b0b0b0;
+    --scrollbar-track: #e0e0e0;
 
-    --error-color: #ff9090;
-    --error-bg: rgba(255, 144, 144, 0.12);
-    --error-border: rgba(255, 144, 144, 0.6);
-
-    /* --title-bar-height: 32px;  Больше не нужен, т.к. делаем полностью свою шапку */
+    --icon-filter: invert(20%) sepia(10%) saturate(500%) hue-rotate(180deg) brightness(90%) contrast(90%); /* Darker icons for light theme */
+    --icon-close-filter: grayscale(0) brightness(0.2) sepia(1) hue-rotate(180deg) saturate(500%); /* Adjusted for light theme close button */
+    --button-text-color: #ffffff;
+    --button-bg: #007acc;
+    --button-hover-bg: #005f9e;
+    --button-active-bg: #004c8c;
+    --button-disabled-bg: #d0d0d0;
+    --button-disabled-text: #888888;
 }
+
+[data-theme="dark"] {
+    --bg-darkest: #1e2229; /* Глубокий фон */
+    --bg-dark: #282c34;    /* Основной фон панелей */
+    --bg-medium: #3a3f4b;  /* Фон инпутов, кнопок */
+    --bg-light: #4f5666;   /* Ховеры, акценты */
+    --bg-folder-item: #30353f;
+    --bg-darker: #22262d; /* Конец градиента для дерева */
+
+    --text-primary: #abb2bf; /* Основной текст */
+    --text-secondary: #828997; /* Плейсхолдеры, вторичная информация */
+    --text-highlight: #61afef; /* Подсвеченный текст, ссылки */
+    --text-error: #e06c75;
+
+    --border-color: #4b5263;       /* Бордюры */
+    --border-highlight: #61afef; /* Бордюры при фокусе */
+
+    --accent-gold: #e5c07b;         /* Золотой акцент */
+    --accent-gold-glow: rgba(229, 192, 123, 0.25);
+    --accent-secondary: #98c379; /* Зеленый акцент */
+
+    --scrollbar-thumb: #5c6370;
+    --scrollbar-track: #282c34;
+
+    --icon-filter: invert(95%) sepia(5%) saturate(50%) hue-rotate(190deg) brightness(110%) contrast(95%); /* Default icon filter for dark theme */
+    --icon-close-filter: grayscale(1) brightness(3) sepia(1) hue-rotate(5deg) saturate(500%); /* Default close icon filter for dark theme */
+    --button-text-color: #282c34;
+    --button-bg: #e5c07b;
+    --button-hover-bg: #d8b36a;
+    --button-active-bg: #c9a65a;
+    --button-disabled-bg: #4a4f58;
+    --button-disabled-text: #777c85;
+}
+
+
 
 /* --- Общие стили --- */
 *, *::before, *::after {
@@ -156,6 +190,18 @@ header {
     background-color: #f1707a; /* Светлее красный при нажатии */
     color: #fff;
 }
+
+.min-button:hover,
+.max-button:hover {
+    background-color: rgba(200, 200, 200, 0.2); /* Нейтральный фон при наведении */
+    color: var(--text-primary);
+}
+
+.min-button:active,
+.max-button:active {
+    background-color: rgba(200, 200, 200, 0.3); /* Чуть темнее при нажатии */
+    color: var(--text-primary);
+}
 /* --- Конец стилей кнопок окна --- */
 
 
@@ -166,10 +212,10 @@ header h1 {
     font-size: 1.3em; /* Уменьшим, т.к. шапка стала ниже */
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
     letter-spacing: 0.5px;
-    background: linear-gradient(to right, var(--accent-gold-hover), var(--accent-gold));
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    /* background: linear-gradient(to right, var(--accent-gold-hover), var(--accent-gold)); */
+    /* -webkit-background-clip: text; */
+    /* -webkit-text-fill-color: transparent; */
+    /* background-clip: text; */
     text-align: center;
     padding-bottom: 0; /* Убираем лишний паддинг */
     line-height: 1.2; /* Уменьшим высоту строки */
@@ -297,16 +343,32 @@ main.content-area {
     outline: none;
     transition: border-color 0.2s, box-shadow 0.2s;
 }
-#search-input:focus {
+#search-input:focus,
+#type-filter-input:focus {
     border-color: var(--border-highlight);
     box-shadow: 0 0 0 3px var(--accent-gold-glow);
 }
-#search-input::placeholder {
+#search-input::placeholder,
+#type-filter-input::placeholder {
     color: var(--text-secondary);
     opacity: 0.6;
 }
 
-#search-input::-webkit-search-cancel-button {
+#type-filter-input {
+    flex-grow: 1;
+    padding: 8px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    font-size: 1em;
+    min-width: 160px;
+    background-color: var(--bg-medium);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+#search-input::-webkit-search-cancel-button,
+#type-filter-input::-webkit-search-cancel-button {
     -webkit-appearance: none;
     appearance: none;
     height: 16px;
@@ -432,12 +494,12 @@ main.content-area {
     vertical-align: middle;
     flex-shrink: 0;
     opacity: 0.9;
-    filter: invert(95%) sepia(5%) saturate(50%) hue-rotate(190deg) brightness(110%) contrast(95%);
+    filter: var(--icon-filter);
 }
 
 .item-label.is-directory::before {
     background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" fill="currentColor"><path d="M.577 3.25a.75.75 0 0 1 .5-.75h4.44l1.25-1.5a.75.75 0 0 1 .6-.3h5.133a.75.75 0 0 1 .75.75v1.196l.001.001a1.75 1.75 0 0 1 1.699 1.71l-.006 7.039a1.75 1.75 0 0 1-1.75 1.75H2.25a1.75 1.75 0 0 1-1.75-1.75V3.25Zm7.5 1a.75.75 0 0 0-.75.75v.25h7.147A.25.25 0 0 0 15 5V3.25a.25.25 0 0 0-.25-.25H8.077Z"/></svg>');
-    filter: invert(90%) sepia(15%) saturate(150%) hue-rotate(190deg) brightness(115%) contrast(95%);
+    filter: var(--icon-filter);
     opacity: 1;
 }
 .item-label:not(.is-directory)::before {
@@ -574,7 +636,33 @@ main.content-area {
     vertical-align: middle;
     flex-shrink: 0;
     opacity: 0.9;
-    filter: invert(95%) sepia(5%) saturate(50%) hue-rotate(190deg) brightness(110%) contrast(95%);
+    filter: var(--icon-filter);
+}
+
+/* --- Theme Switcher --- */
+.theme-switcher {
+    /* position: fixed; bottom: 20px; right: 20px; */ /* Original positioning */
+    z-index: 1000; /* Keep z-index for safety */
+    margin-left: 40px;  /* Position after absolute window controls. Header padding-left is 15px. Window controls are ~30px wide. 15px (header) + 40px = 55px from header edge. Controls end ~45px. */
+    margin-right: 15px; /* Space before the main H1 title */
+    display: flex; /* Ensure proper alignment of the button if needed */
+    align-items: center; /* Vertically align button content */
+}
+
+.theme-switcher button {
+    padding: 8px 12px;
+    font-size: 0.9em;
+    background-color: var(--bg-light);
+    color: var(--text-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+}
+
+.theme-switcher button:hover {
+    background-color: var(--accent-gold);
+    color: var(--bg-dark);
 }
 
 /* --- Общие стили кнопок --- */

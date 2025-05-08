@@ -11,13 +11,15 @@
         <header>
             <!-- НОВЫЙ КОНТЕЙНЕР ДЛЯ КНОПОК ОКНА -->
             <div class="window-controls">
-                <!-- Пока только кнопка закрыть -->
+                <button id="window-min-btn" class="control-button min-button" title="Свернуть">－</button>
+                <button id="window-max-btn" class="control-button max-button" title="Развернуть">▢</button>
                 <button id="window-close-btn" class="control-button close-button" title="Закрыть">✕</button>
-                 <!-- Сюда можно будет добавить кнопки minimize/maximize -->
-                 <!-- <button id="window-min-btn" class="control-button min-button" title="Свернуть">－</button> -->
-                 <!-- <button id="window-max-btn" class="control-button max-button" title="Развернуть">▢</button> -->
             </div>
             <!-- КОНЕЦ КОНТЕЙНЕРА ДЛЯ КНОПОК ОКНА -->
+
+            <div class="theme-switcher">
+                <button id="theme-toggle-btn">Сменить тему</button>
+            </div>
 
             <h1>Folder for AI</h1>
             <div class="folder-selection">
@@ -33,6 +35,7 @@
             <div class="panel file-tree-panel">
                 <div class="tree-controls">
                     <input type="search" id="search-input" placeholder="Поиск по имени..." aria-label="Фильтр дерева файлов">
+                    <input type="text" id="type-filter-input" placeholder="Фильтр по типу (например, .js, .txt)" aria-label="Фильтр по типу файла" style="margin-left: 5px;">
                     <button id="expand-all-btn" title="Развернуть все папки">Развернуть</button>
                     <button id="collapse-all-btn" title="Свернуть все папки">Свернуть</button>
                 </div>
